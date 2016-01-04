@@ -1,0 +1,50 @@
+{ 
+    "_id" : 1.0, 
+    "domainName" : "test1.com", 
+    "hosting" : "hostgator.com"
+}
+{ 
+    "_id" : 2.0, 
+    "domainName" : "test2.com", 
+    "hosting" : "aws.amazon.com"
+}
+{ 
+    "_id" : 3.0, 
+    "domainName" : "test3.com", 
+    "hosting" : "aws.amazon.com"
+}
+{ 
+    "_id" : 4.0, 
+    "domainName" : "test4.com", 
+    "hosting" : "hostgator.com"
+}
+{ 
+    "_id" : 5.0, 
+    "domainName" : "test5.com", 
+    "hosting" : "aws.amazon.com"
+}
+{ 
+    "_id" : 6.0, 
+    "domainName" : "test6.com", 
+    "hosting" : "cloud.google.com"
+}
+{ 
+    "_id" : 7.0, 
+    "domainName" : "test7.com", 
+    "hosting" : "aws.amazon.com"
+}
+{ 
+    "_id" : 8.0, 
+    "domainName" : "test8.com", 
+    "hosting" : "hostgator.com"
+}
+{ 
+    "_id" : 9.0, 
+    "domainName" : "test9.com", 
+    "hosting" : "cloud.google.com"
+}
+{ 
+    "_id" : 10.0, 
+    "domainName" : "test10.com", 
+    "hosting" : "godaddy.com"
+}

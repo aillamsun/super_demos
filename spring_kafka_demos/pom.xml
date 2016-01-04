@@ -1,0 +1,44 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>base_</artifactId>
+        <groupId>com.sung</groupId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>spring_kafka_demos</artifactId>
+    <packaging>jar</packaging>
+
+    <name>spring_kafka_demos</name>
+    <url>http://maven.apache.org</url>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.sung</groupId>
+            <artifactId>base_common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- Kafka -->
+        <dependency>
+            <groupId>org.springframework.integration</groupId>
+            <artifactId>spring-integration-kafka</artifactId>
+            <version>1.2.1.RELEASE</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.goldmansachs</groupId>
+                    <artifactId>gs-collections</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro</artifactId>
+            <version>1.7.7</version>
+        </dependency>
+    </dependencies>
+</project>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xmlns:int-kafka="http://www.springframework.org/schema/integration/kafka"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+          http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd
+          http://www.springframework.org/schema/integration/kafka http://www.springframework.org/schema/integration/kafka/spring-integration-kafka.xsd
+          http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd">
+
+
+    <!-- 加载属性文件 -->
+    <bean class="com.sung.base.common.spring.ZooKeeperPropertyPlaceholderConfigurer">
+        <property name="systemPropertiesModeName" value="SYSTEM_PROPERTIES_MODE_OVERRIDE" />
+        <property name="ignoreResourceNotFound" value="true" />
+        <property name="locations">
+            <list>
+                <value>classpath:system.properties</value>
+            </list>
+        </property>
+    </bean>
+
+
+    <int:channel id="inputToKafka">
+        <int:queue/>
+    </int:channel>
+
+    <int-kafka:outbound-channel-adapter id="kafkaOutboundChannelAdapter"
+                                        kafka-producer-context-ref="kafkaProducerContext"
+                                        auto-startup="false"
+                                        channel="inputToKafka"
+                                        order="3">
+        <int:poller fixed-delay="1000" time-unit="MILLISECONDS" receive-timeout="0" task-executor="taskExecutor"/>
+    </int-kafka:outbound-channel-adapter>
+
+
+    <task:executor id="taskExecutor" pool-size="5" keep-alive="120" queue-capacity="500"/>
+
+    <bean id="producerProperties"
+          class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+        <property name="properties">
+            <props>
+                <prop key="topic.metadata.refresh.interval.ms">3600000</prop>
+                <prop key="message.send.max.retries">5</prop>
+                <prop key="serializer.class">kafka.serializer.StringEncoder</prop>
+                <prop key="request.required.acks">1</prop>
+            </props>
+        </property>
+    </bean>
+
+
+    <int-kafka:producer-context id="kafkaProducerContext"
+                                producer-properties="producerProperties">
+        <int-kafka:producer-configurations>
+            <int-kafka:producer-configuration
+                    broker-list="192.168.3.141:9093"
+                    topic="lxw1234"
+                    compression-type="none"
+                    key-encoder="kafkaEncoder"
+                    value-encoder="kafkaEncoder"
+                    key-class-type="java.lang.String"
+                    value-class-type="java.lang.String"
+                    />
+        </int-kafka:producer-configurations>
+    </int-kafka:producer-context>
+
+
+    <bean id="kafkaEncoder" class="org.springframework.integration.kafka.serializer.avro.AvroReflectDatumBackedKafkaEncoder">
+        <constructor-arg value="java.lang.String" />
+    </bean>
+
+</beans>

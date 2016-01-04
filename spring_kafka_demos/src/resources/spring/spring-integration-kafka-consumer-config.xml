@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:int-kafka="http://www.springframework.org/schema/integration/kafka"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xsi:schemaLocation="
+          http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+          http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+          http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+          http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+           http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd
+          http://www.springframework.org/schema/integration/kafka http://www.springframework.org/schema/integration/kafka/spring-integration-kafka.xsd
+          http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd">
+
+
+	<!-- 加载属性文件 -->
+	<bean class="com.sung.base.common.spring.ZooKeeperPropertyPlaceholderConfigurer">
+		<property name="systemPropertiesModeName" value="SYSTEM_PROPERTIES_MODE_OVERRIDE" />
+		<property name="ignoreResourceNotFound" value="true" />
+		<property name="locations">
+			<list>
+				<value>classpath:system.properties</value>
+			</list>
+		</property>
+	</bean>
+
+	<int:channel id="inputFromKafka">
+		<int:queue/>
+	</int:channel>
+
+	<int-kafka:inbound-channel-adapter
+			id="kafkaInboundChannelAdapter" kafka-consumer-context-ref="consumerContext"
+			auto-startup="false" channel="inputFromKafka">
+		<int:poller fixed-delay="10" time-unit="MILLISECONDS"
+					max-messages-per-poll="5" />
+	</int-kafka:inbound-channel-adapter>
+
+
+	<bean id="consumerProperties"
+		  class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+		<property name="properties">
+			<props>
+				<prop key="auto.offset.reset">smallest</prop>
+				<prop key="socket.receive.buffer.bytes">10485760</prop> <!-- 10M -->
+				<prop key="fetch.message.max.bytes">5242880</prop>
+				<prop key="auto.commit.interval.ms">1000</prop>
+			</props>
+		</property>
+	</bean>
+
+
+	<int-kafka:consumer-context id="consumerContext"
+								consumer-timeout="4000" zookeeper-connect="zookeeperConnect" consumer-properties="consumerProperties">
+		<int-kafka:consumer-configurations>
+			<int-kafka:consumer-configuration
+					group-id="group1"
+					max-messages="5000"
+					value-decoder="kafkaDecoder"
+					key-decoder="kafkaDecoder"
+					>
+				<int-kafka:topic id="lxw1234" streams="4" />
+			</int-kafka:consumer-configuration>
+		</int-kafka:consumer-configurations>
+	</int-kafka:consumer-context>
+
+
+	<int-kafka:zookeeper-connect id="zookeeperConnect"
+								 zk-connect="192.168.3.141:2181"
+								 zk-connection-timeout="6000"
+								 zk-session-timeout="400"
+								 zk-sync-time="200" />
+
+	<bean id="kafkaDecoder" class="org.springframework.integration.kafka.serializer.avro.AvroReflectDatumBackedKafkaDecoder">
+		<constructor-arg value="java.lang.String" />
+	</bean>
+</beans>

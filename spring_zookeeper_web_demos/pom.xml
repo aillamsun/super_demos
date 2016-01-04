@@ -1,0 +1,62 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <parent>
+        <artifactId>base_</artifactId>
+        <groupId>com.sung</groupId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>spring_zookeeper_web_demos</artifactId>
+    <packaging>war</packaging>
+    <name>spring_zookeeper_web_demos Maven Webapp</name>
+    <url>http://maven.apache.org</url>
+
+    <properties>
+        <!--Web-->
+        <servlet.version>3.0.1</servlet.version>
+        <jsp.version>2.2</jsp.version>
+        <jstl.version>1.2</jstl.version>
+        <standard.version>1.1.2</standard.version>
+    </properties>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>com.sung</groupId>
+            <artifactId>base_common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.freemarker</groupId>
+            <artifactId>freemarker</artifactId>
+            <version>2.3.19</version>
+        </dependency>
+    </dependencies>
+
+
+
+    <build>
+        <finalName>spring_zookeeper_web_demos</finalName>
+        <plugins>
+            <!-- jetty插件 -->
+            <plugin>
+                <groupId>org.mortbay.jetty</groupId>
+                <artifactId>jetty-maven-plugin</artifactId>
+                <configuration>
+                    <webApp>
+                        <contextPath>/</contextPath>
+                    </webApp>
+                    <connectors>
+                        <connector implementation="org.eclipse.jetty.server.nio.SelectChannelConnector">
+                            <port>8011</port>
+                            <maxIdleTime>60000</maxIdleTime>
+                        </connector>
+                    </connectors>
+                    <stopKey />
+                    <stopPort />
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

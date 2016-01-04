@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xmlns:context="http://www.springframework.org/schema/context"
+	   xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+	   xsi:schemaLocation="
+		http://www.springframework.org/schema/context
+		http://www.springframework.org/schema/context/spring-context-3.1.xsd
+		http://www.springframework.org/schema/rabbit 
+		http://www.springframework.org/schema/rabbit/spring-rabbit-1.0.xsd
+		http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans-3.1.xsd">
+	
+	<!-- 加载属性文件 -->
+	<bean class="com.sung.base.common.spring.ZooKeeperPropertyPlaceholderConfigurer">
+		<property name="systemPropertiesModeName" value="SYSTEM_PROPERTIES_MODE_OVERRIDE" />
+		<property name="ignoreResourceNotFound" value="true" />
+		<property name="locations">
+			<list>
+				<value>classpath:system.properties</value>
+			</list>
+		</property>
+	</bean>
+	
+	
+	<!-- 初始化MQ的相关配置信息 -->
+	<bean id = "mqConfigBean" class="com.sung.rabbitmq.base.MQQueueNameBean">
+		<property name="testSpringMqSyncDemo" value="Test_Spring_mq_sync_demo"/>
+		<property name="testSpringMqAsyncDemo" value="Test_Spring_mq_async_demo"/>
+	</bean>	
+	
+	<!-- 连接信息 -->
+	<rabbit:connection-factory id="connectionFactory" host="${mqHost}" username="${mqUserName}" password="${mqPassword}" port="${mqPort}"/>
+	
+	<rabbit:template id="rabbitTemplate" connection-factory="connectionFactory" reply-timeout="${replyTimeout}"/>
+				
+	<rabbit:admin connection-factory="connectionFactory"/>
+	
+	<!-- 对列名 -->
+	<rabbit:queue name="Test_Spring_mq_sync_demo"/>
+	<rabbit:queue name="Test_Spring_mq_async_demo"/>
+	
+	<!-- 同步 -->
+	<bean id="TestSpringMqSyncDemo" class="com.sung.rabbitmq.demo.TestSpringMqSyncDemo">
+		<property name="rabbitTemplate" ref="rabbitTemplate"/>
+	</bean>
+	<rabbit:listener-container connection-factory="connectionFactory" prefetch="1" concurrency="30" acknowledge="manual">
+		<rabbit:listener queue-names="Test_Spring_mq_sync_demo" ref="TestSpringMqSyncDemo"/>
+	</rabbit:listener-container>
+	
+	
+	<!-- 异步 -->
+	<bean id="TestSpringMqAsyncDemo" class="com.sung.rabbitmq.demo.TestSpringMqAsyncDemo">
+		<property name="rabbitTemplate" ref="rabbitTemplate"/>
+	</bean>
+	<rabbit:listener-container connection-factory="connectionFactory" prefetch="1" concurrency="30" acknowledge="manual">
+		<rabbit:listener queue-names="Test_Spring_mq_async_demo" ref="TestSpringMqAsyncDemo"/>
+	</rabbit:listener-container>
+</beans>

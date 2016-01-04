@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mongo="http://www.springframework.org/schema/data/mongo"
+	xsi:schemaLocation="
+          http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+          http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+          http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+          http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+          http://www.springframework.org/schema/data/mongo http://www.springframework.org/schema/data/mongo/spring-mongo-1.0.xsd">
+
+
+	<!-- 加载属性文件 -->
+	<bean class="com.sung.base.common.spring.ZooKeeperPropertyPlaceholderConfigurer">
+		<property name="systemPropertiesModeName" value="SYSTEM_PROPERTIES_MODE_OVERRIDE" />
+		<property name="ignoreResourceNotFound" value="true" />
+		<property name="locations">
+			<list>
+				<value>classpath:system.properties</value>
+			</list>
+		</property>
+	</bean>
+
+
+<!-- 	<context:component-scan base-package="com.sungang.nosql.mongo.test.spring.data.*" />
+	For defining mongo repository
+	<mongo:repositories base-package="com.sungang.nosql.mongo.test.spring.data.dao" />
+	
+	Register Mongo Instance
+	<mongo:mongo host="localhost" port="27017" id="mongo" />
+	<mongo:db-factory dbname="domain" mongo-ref="mongo" id="mongoDbFactory" />
+	 for defining mongo template
+	<bean id="mongoTemplate" class="org.springframework.data.mongodb.core.MongoTemplate">
+		<constructor-arg name="mongoDbFactory" ref="mongoDbFactory" /> 
+	</bean>-->
+	
+	<!-- spring MongoDB Config Start-->
+	<!-- Default bean name is 'mongo' -->
+	<!-- 定义mongo对象，对应的是mongodb官方jar包中的Mongo，replica-set设置集群副本的ip地址和端口 -->
+	<!--  
+         connections-per-host: 每个主机答应的连接数（每个主机的连接池大小），当连接池被用光时，会被阻塞住   
+         max-wait-time: 被阻塞线程从连接池获取连接的最长等待时间（ms）  
+         connect-timeout:在建立（打开）套接字连接时的超时时间（ms）  
+         socket-timeout:套接字超时时间;该值会被传递给Socket.setSoTimeout(int)  
+    	 slave-ok:指明是否答应驱动从次要节点或者奴隶节点读取数据  
+    -->  
+	<mongo:mongo host="localhost" port="27017" id="mongo">
+		<!-- <mongo:options
+			connections-per-host="${mongoConnectionsPerHost}"
+			threads-allowed-to-block-for-connection-multiplier="${mongoThreadsAllowedToBlockForConnectionMultiplier}"
+			connect-timeout="${mongoConnectTimeout}"
+			max-wait-time="${mongoMaxWaitTime}"
+			auto-connect-retry="${mongoAutoConnectRetry}"
+			socket-keep-alive="${mongoSocketKeepAlive}"
+			socket-timeout="${mongoSocketTimeout}"
+			slave-ok="${mongoSlaveOk}"
+			write-number="${mongoWriteNumber}"
+			write-timeout="${mongoRiteTimeout}"
+			write-fsync="${mongoWriteFsync}"
+		/> -->
+	</mongo:mongo>
+	<!-- Mongo Factory Config -->
+	<mongo:db-factory dbname="domain" mongo-ref="mongo" id="mongoDbFactory"/>
+	
+	<!-- For defining mongo repository -->
+	<mongo:repositories base-package="com.sung.mongo.dao" />
+	<!-- 自动扫描以下包的类 -->
+	<!-- 映射转换器，扫描back-package目录下的文件，根据注释，把它们作为mongodb的一个collection的映射 -->
+	<mongo:mapping-converter base-package="com.sung.mongo.**.model" />
+	
+	<bean id="mappingContext" class="org.springframework.data.mongodb.core.mapping.MongoMappingContext" />
+	
+	<!-- 配置mongodb映射类型 -->
+	<bean id="mappingMongoConverter" class="org.springframework.data.mongodb.core.convert.MappingMongoConverter">
+		<constructor-arg name="mongoDbFactory" ref="mongoDbFactory" />
+		<constructor-arg name="mappingContext" ref="mappingContext" />
+		<property name="typeMapper" ref="defaultMongoTypeMapper" />
+	</bean>
+	
+	<!-- 默认Mongodb类型映射 -->
+	<bean id="defaultMongoTypeMapper" class="org.springframework.data.mongodb.core.convert.DefaultMongoTypeMapper">
+		<constructor-arg name="typeKey">
+			<null /><!-- 这里设置为空,可以把 spring data mongodb 多余保存的_class字段去掉 -->
+		</constructor-arg>
+	</bean>
+	<!--  for defining mongo template -->
+	<!-- mongodb的主要操作对象mongoTemplate(Spring Data提供)，所有对mongodb的增删改查的操作都是通过它完成 -->
+	<bean id="mongoTemplate" class="org.springframework.data.mongodb.core.MongoTemplate">
+		<constructor-arg name="mongoDbFactory" ref="mongoDbFactory" />
+		<constructor-arg name="mongoConverter" ref="mappingMongoConverter" />
+	</bean>
+	
+	<!-- spring MongoDB Config End -->
+	
+</beans>
