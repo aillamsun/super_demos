@@ -1,0 +1,510 @@
+----Hadoop 实例16  MultipleInputs实战2：多种自定义文件格式的文件输入处理
+
+MultipleInputs 可以让MR支持多种输入格式。
+
+比如我们有两种文件格式，那么我们就需要有两套 Record Class, RecordReader和InputFormat。
+
+
+MultipleInputs需要不同的InputFormat， 一种InputFormat使用一种RecordReader来读取文件并返回一种Record格式的值，这就是这三个类型的关系，也是map过程中涉及的几个步骤的工具和产物。
+
+1、数据准备
+
+a文件
+1t80
+2t90
+3t100
+4t50
+5t73
+
+b文件
+1tlilit3
+2txiaomingt3
+3tfeifeit3
+4tzhangsant3
+5tlisit3
+
+2、要求自定义实现inputFormat，输出 key、value格式数据
+
+3、编码实现--FirstInputFormat
+
+package com.wy.hadoop.fourteen;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
+import org.apache.hadoop.io.Writable;
+
+public class FirstClass implements Writable {
+	private String value;
+	
+	public FirstClass(){
+		this.value = "Test";
+	}
+	
+	public FirstClass(String value){
+		this.value = value;
+	}
+	
+	@Override
+	public void readFields(DataInput readDataInput) throws IOException {
+		String val = readDataInput.readUTF();
+		this.value = val.trim();
+	}
+
+	@Override
+	public void write(DataOutput writeDataOutput) throws IOException {
+		writeDataOutput.writeUTF(value);
+		
+	}
+
+	public String getValue() {
+		return value;
+	}
+
+	public void setValue(String value) {
+		this.value = value;
+	}
+
+	@Override
+	public String toString() {
+		// TODO Auto-generated method stub
+		return "FirstClasst"+value;
+	}
+
+	
+
+}
+
+package com.wy.hadoop.fourteen;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapreduce.RecordReader;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.lib.input.LineRecordReader;
+
+public class FirstClassReader extends RecordReader<Text, FirstClass> {
+
+	private LineRecordReader lineRecordReader = null;
+	private Text key = null;
+	private FirstClass firstClassValue = null;
+	
+	@Override
+	public void initialize(InputSplit paramInputSplit,
+			TaskAttemptContext paramTaskAttemptContext) throws IOException,
+			InterruptedException {
+		close();
+		lineRecordReader = new LineRecordReader();
+		lineRecordReader.initialize(paramInputSplit, paramTaskAttemptContext);
+		
+	}
+
+	@Override
+	public boolean nextKeyValue() throws IOException, InterruptedException {
+		if(!lineRecordReader.nextKeyValue()){
+			key = null;
+			firstClassValue = null;
+			return false;
+		}
+		Text line = lineRecordReader.getCurrentValue();
+		String val = line.toString();
+		System.out.println("FirstClass:"+val);
+		
+		String[] arr = val.split("t", -1);
+		key = new Text(arr[0].trim());
+		firstClassValue = new FirstClass(arr[1].trim());
+		
+		return true;
+	}
+
+	@Override
+	public Text getCurrentKey() throws IOException, InterruptedException {
+		return key;
+	}
+
+	@Override
+	public FirstClass getCurrentValue() throws IOException,
+			InterruptedException {
+		return firstClassValue;
+	}
+
+	@Override
+	public float getProgress() throws IOException, InterruptedException {
+		
+		return lineRecordReader.getProgress();
+	}
+
+	@Override
+	public void close() throws IOException {
+		if(null != lineRecordReader){
+			lineRecordReader.close();
+			lineRecordReader = null;
+		}
+		key =null;
+		firstClassValue = null;
+	}
+
+}
+
+package com.wy.hadoop.fourteen;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapreduce.RecordReader;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+
+public class FirstInputFormat extends FileInputFormat<Text, FirstClass> {
+
+	@Override
+	public RecordReader<Text, FirstClass> createRecordReader(
+			InputSplit paramInputSplit,
+			TaskAttemptContext paramTaskAttemptContext) throws IOException,
+			InterruptedException {
+		
+		return new FirstClassReader();
+	}
+
+}
+
+4、编码实现--SecondInputFormat
+
+package com.wy.hadoop.fourteen;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
+import org.apache.hadoop.io.Writable;
+
+public class SecondClass implements Writable {
+	
+	private String value;
+	private int additional;
+	
+	public SecondClass(){
+		value = "Test2";
+		additional = 0;
+	}
+	public SecondClass(String value,int additional){
+		this.value = value;
+		this.additional = additional;
+	}
+	@Override
+	public void readFields(DataInput dataInput) throws IOException {
+		// TODO Auto-generated method stub
+		value = dataInput.readUTF().trim();
+		additional = dataInput.readInt();
+	}
+
+	@Override
+	public void write(DataOutput dataOutput) throws IOException {
+		// TODO Auto-generated method stub
+		dataOutput.writeUTF(value);
+		dataOutput.writeInt(additional);
+	}
+
+	public String getValue() {
+		return value;
+	}
+
+	public void setValue(String value) {
+		this.value = value;
+	}
+	public int getAdditional() {
+		return additional;
+	}
+	public void setAdditional(int additional) {
+		this.additional = additional;
+	}
+	@Override
+	public String toString() {
+		
+		return "SecondClasst"+value+"t"+additional;
+	}
+	
+}
+
+package com.wy.hadoop.fourteen;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapreduce.RecordReader;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.lib.input.LineRecordReader;
+
+public class SecondClassReader extends RecordReader<Text, SecondClass> {
+	private LineRecordReader lineRecordReader = null;
+	private Text key = null;
+	private SecondClass secondClassValue = null;
+	
+	@Override
+	public void initialize(InputSplit paramInputSplit,
+			TaskAttemptContext paramTaskAttemptContext) throws IOException,
+			InterruptedException {
+		close();
+		lineRecordReader = new LineRecordReader();
+		lineRecordReader.initialize(paramInputSplit, paramTaskAttemptContext);
+	}
+
+	@Override
+	public boolean nextKeyValue() throws IOException, InterruptedException {
+		if(!lineRecordReader.nextKeyValue()){
+			key = null; 
+			secondClassValue = null;
+			return false;
+		}
+		Text line = lineRecordReader.getCurrentValue();
+		String[] arr = line.toString().split("t",-1);
+		
+		key = new Text(arr[0].trim());
+		secondClassValue = new SecondClass(arr[1].trim(), Integer.valueOf(arr[2]));
+		
+		return true;
+	}
+
+	@Override
+	public Text getCurrentKey() throws IOException, InterruptedException {
+		// TODO Auto-generated method stub
+		return key;
+	}
+
+	@Override
+	public SecondClass getCurrentValue() throws IOException,
+			InterruptedException {
+		// TODO Auto-generated method stub
+		return secondClassValue;
+	}
+
+	@Override
+	public float getProgress() throws IOException, InterruptedException {
+		// TODO Auto-generated method stub
+		return lineRecordReader.getProgress();
+	}
+
+	@Override
+	public void close() throws IOException {
+		if(null != lineRecordReader){
+			lineRecordReader.close();
+			lineRecordReader = null;
+		}
+		key = null;
+		secondClassValue = null;
+	}
+
+}
+
+package com.wy.hadoop.fourteen;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapreduce.RecordReader;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+
+public class SecondInputFormat extends FileInputFormat<Text, SecondClass> {
+
+	@Override
+	public RecordReader<Text, SecondClass> createRecordReader(
+			InputSplit paramInputSplit,
+			TaskAttemptContext paramTaskAttemptContext) throws IOException,
+			InterruptedException {
+		return new SecondClassReader();
+	}
+
+}
+
+5、编码实现--Map
+
+
+package com.wy.hadoop.fourteen;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+public class FirstMap extends Mapper<Text, FirstClass, Text, Text> {
+
+	@Override
+	protected void map(Text key, FirstClass value,Context context)
+			throws IOException, InterruptedException {
+		
+		context.write(key, new Text(value.toString()));
+	}
+}
+
+
+package com.wy.hadoop.fourteen;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+public class SecondMap extends Mapper<Text, SecondClass, Text, Text> {
+
+	@Override
+	protected void map(Text key, SecondClass value,Context context)
+			throws IOException, InterruptedException {
+		
+		context.write(key, new Text(value.toString()));
+	}
+}
+
+6、编码实现--Reduce
+
+package com.wy.hadoop.fourteen;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Reducer;
+
+public class MyReducer extends Reducer<Text, Text, Text, Text> {
+	
+	@Override
+	protected void reduce(Text key, Iterable<Text> values,Context context)
+			throws IOException, InterruptedException {
+		for(Text val:values){
+			context.write(key, val);
+		}
+	}
+}
+
+7、编码实现--JobMain
+package com.wy.hadoop.fourteen;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.MultipleInputs;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+/**
+ * sudo -u hdfs hadoop jar rn.jar com.wy.hadoop.fourteen.MultipleDriver -i1 /user/data/fourteen/a/ -i2 /user/data/fourteen/b/ -o /user/data/fourteen/output
+ * @author Administrator
+ *
+ */
+public class MultipleDriver extends Configuration implements Tool {
+	private String input1 = null;
+	private String input2 = null;
+	private String output = null;
+	
+	@Override
+	public Configuration getConf() {
+		return new Configuration();
+	}
+
+	
+	@Override
+	public void setConf(Configuration arg0) {
+	}
+
+	public static void main(String[] args)throws Exception{
+		Configuration conf = new Configuration();
+		
+		ToolRunner.run(conf, new MultipleDriver(), args);
+	}
+	@Override
+	public int run(String[] arg0) throws Exception {
+		setArg(arg0);
+		checkParam();
+		
+		Configuration configuration = new Configuration();
+		Job job = new Job(configuration,"multipleinputformat");
+		job.setJarByClass(MultipleDriver.class);
+		
+		job.setReducerClass(MyReducer.class);
+		
+		job.setMapOutputKeyClass(Text.class);
+		job.setMapOutputValueClass(Text.class);
+		
+		job.setOutputKeyClass(Text.class);
+		job.setOutputValueClass(Text.class);
+		
+		MultipleInputs.addInputPath(job, new Path(input1), FirstInputFormat.class, FirstMap.class);
+		MultipleInputs.addInputPath(job, new Path(input2), SecondInputFormat.class, SecondMap.class);
+		
+		FileOutputFormat.setOutputPath(job, new Path(output));
+		
+		return job.waitForCompletion(true)?0:1;
+	}
+
+	
+	private void checkParam(){
+		if(input1==null || "".equals(input1.trim())){
+			System.out.println("no phone input....");
+			userManual();
+			System.exit(-1);
+		}
+		if(input2==null || "".equals(input2.trim())){
+			System.out.println("no user input....");
+			userManual();
+			System.exit(-1);
+		}
+		if(output==null || "".equals(output.trim())){
+			System.out.println("no output path....");
+			userManual();
+			System.exit(-1);
+		}
+		
+	}
+	private void setArg(String[] args){
+		for(int i=0;i<args.length;i++){
+			if("-i1".equals(args[i])){
+				input1 = args[++i];
+			}
+			if("-i2".equals(args[i])){
+				input2 = args[++i];
+			}
+			if("-o".equals(args[i])){
+				output = args[++i];
+			}
+			
+		}
+	}
+	
+	private void userManual(){
+		System.err.println("Usage:");
+		System.err.println("-i1 input \t phone data path.");
+		System.err.println("-i2 input \t user data path.");
+		System.err.println("-o output \t output data path.");
+	}
+}
+
+
+8、运行
+	a、程序打包上传
+
+	b、准备数据文件
+
+	c、数据文件转移到指定的hdfs目录下面
+	[root@x00 ~]# sudo -u hdfs hadoop fs -mkdir /user/data/fourteen/a
+	[root@x00 ~]# sudo -u hdfs hadoop fs -mkdir /user/data/fourteen/b
+	[root@x00 ~]# sudo -u hdfs hadoop fs -put /opt/test/hd/fourteen_a.txt /user/data/fourteen/a
+	[root@x00 ~]# sudo -u hdfs hadoop fs -put /opt/test/hd/fourteen_b.txt /user/data/fourteen/b
+
+	d、执行命令
+	sudo -u hdfs hadoop jar rn.jar com.wy.hadoop.fourteen.MultipleDriver -i1 /user/data/fourteen/a/ -i2 /user/data/fourteen/b/ -o /user/data/fourteen/output
+
+	e、查看结果
+	sudo -u hdfs hadoop fs -cat /user/data/fourteen/output/part*
+
+
+
+
+
+
+

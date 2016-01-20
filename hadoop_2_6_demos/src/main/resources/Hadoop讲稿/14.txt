@@ -1,0 +1,265 @@
+Hadoop 案例14---多字段排序
+
+1、原始数据
+str1    2
+str2    5
+str3    9
+str1    1
+str2    3
+str3    12
+str1    8
+str2    7
+str3	18
+2、预期输出
+    str1    1,2,8
+    str2    3,5,7
+    str3    9,12,19
+
+3、设计思路
+    从对Map reduce的理解我们可以轻松的知道key会在整个过程中经历排序的过程，但是我们观察输出结果可以看出value也实现了排序，因此问题的关键就是如何实现value的排序。
+    这里我们需要引入一个自定义的key，在这个自定义key里面实现key和value的排序工作，如何实现呢？从前面的例子我们可以知道，可以利用mapreduce的二次排序功能来实现，
+    这里既有要同时对key和value那我们设计的自定义Key里面肯定应该包括这两部分数据，遵从我们前面的总结
+    核心总结：
+		1、map最后阶段进行partition分区，一般使用job.setPartitionerClass设置的类，如果没有自定义Key的hashCode()方法进行排序。
+		2、每个分区内部调用job.setSortComparatorClass设置的key的比较函数类进行排序，如果没有则使用Key的实现的compareTo方法。
+		3、当reduce接收到所有map传输过来的数据之后，调用job.setSortComparatorClass设置的key比较函数类对所有数据对排序，如果没有则使用Key的实现的compareTo方法。
+		4、紧接着使用job.setGroupingComparatorClass设置的分组函数类，进行分组，同一个Key的value放在一个迭代器里面。
+
+    针对上面的第1点，我们要解决符合主键的partition问题，因此这里我们会实现一个按照输出key进行分区的类，最后通过job.setPartitionerClass设置。
+    针对上面提到的第2点，我们可能需要写一个比较函数的实现类，主要作用是如果key相同的情况下将value按照升序排列
+    针对上面的第3点，同样可以使用上面的比较函数实现类即可。
+    针对上面的第4点，我们需要对默认的group规则进行干预，写一个自己的group实现
+
+    好的，问题到这里已经进行了完全的拆解，我们来实现上面的代码吧！
+
+4、自定义Key实现
+	package com.wy.hadoop.selfkey;
+
+	import java.io.DataInput;
+	import java.io.DataOutput;
+	import java.io.IOException;
+
+	import org.apache.hadoop.io.WritableComparable;
+
+	public class IntPaire implements WritableComparable<IntPaire> {
+
+		private String firstKey;
+		private int secondKey;
+
+		@Override
+		public void readFields(DataInput in) throws IOException {
+			// TODO Auto-generated method stub
+			firstKey = in.readUTF();
+			secondKey = in.readInt();
+		}
+
+		@Override
+		public void write(DataOutput out) throws IOException {
+			// TODO Auto-generated method stub
+			out.writeUTF(firstKey);
+			out.writeInt(secondKey);
+		}
+
+		@Override
+		public int compareTo(IntPaire o) {
+			// TODO Auto-generated method stub
+			return o.getFirstKey().compareTo(this.firstKey);
+		}
+
+		public String getFirstKey() {
+			return firstKey;
+		}
+
+		public void setFirstKey(String firstKey) {
+			this.firstKey = firstKey;
+		}
+
+		public int getSecondKey() {
+			return secondKey;
+		}
+
+		public void setSecondKey(int secondKey) {
+			this.secondKey = secondKey;
+		}
+
+	}
+
+5、编写自定义Partitioner
+
+	package com.wy.hadoop.selfkey;
+
+	import org.apache.hadoop.io.IntWritable;
+	import org.apache.hadoop.mapreduce.Partitioner;
+
+	public class PartitionByText extends Partitioner<IntPaire, IntWritable> {
+
+		@Override
+		public int getPartition(IntPaire key, IntWritable value, int numPartitions) {
+			// TODO Auto-generated method stub
+			return (key.getFirstKey().hashCode() & Integer.MAX_VALUE) % numPartitions;
+		}
+
+	}
+
+6、自定义SortComparator 类
+
+	package com.wy.hadoop.selfkey;
+
+	import org.apache.hadoop.io.WritableComparable;
+	import org.apache.hadoop.io.WritableComparator;
+
+	public class TextIntComparator extends WritableComparator {
+
+		public TextIntComparator(){
+		super(IntPaire.class,true);
+	    }
+
+	    @Override
+	    public int compare(WritableComparable a, WritableComparable b) {
+		// TODO Auto-generated method stub
+		IntPaire o1 = (IntPaire) a;
+		IntPaire o2 = (IntPaire) b;
+		if(!o1.getFirstKey().equals(o2.getFirstKey())){
+		    return o1.getFirstKey().compareTo(o2.getFirstKey());
+		}else{
+		    return o1.getSecondKey() - o2.getSecondKey();
+		}
+	    }
+	}
+
+7、自定义Group 类
+
+	package com.wy.hadoop.selfkey;
+
+	import org.apache.hadoop.io.WritableComparable;
+	import org.apache.hadoop.io.WritableComparator;
+
+	public class TextGroupComparator extends WritableComparator {
+		public TextGroupComparator() {
+			super(IntPaire.class, true);
+		}
+
+		@Override
+		public int compare(WritableComparable a, WritableComparable b) {
+			// TODO Auto-generated method stub
+			IntPaire o1 = (IntPaire) a;
+			IntPaire o2 = (IntPaire) b;
+			return o1.getFirstKey().compareTo(o2.getFirstKey());
+		}
+	}
+
+8、编写map代码（以KeyValueTextInputFormat的输入形式读取HDFS中的数据）TextInputFormat
+	package com.wy.hadoop.selfkey;
+
+	import java.io.IOException;
+
+	import org.apache.hadoop.io.IntWritable;
+	import org.apache.hadoop.io.Text;
+	import org.apache.hadoop.mapreduce.Mapper;
+
+	public class SortMapper extends Mapper<Object, Text, IntPaire, IntWritable> {
+
+		public IntPaire intPaire = new IntPaire();
+		public IntWritable intWritable = new IntWritable(0);
+
+		@Override
+		protected void map(Object key, Text value, Context context)
+				throws IOException, InterruptedException {
+			// TODO Auto-generated method stub
+			int intValue = Integer.parseInt(value.toString());
+			intPaire.setFirstKey(key.toString());
+			intPaire.setSecondKey(intValue);
+			intWritable.set(intValue);
+			context.write(intPaire, intWritable);// key:str1 value:5
+		}
+	}
+
+9、编写reduce代码
+	package com.wy.hadoop.selfkey;
+
+	import java.io.IOException;
+	import java.util.Iterator;
+
+	import org.apache.hadoop.io.IntWritable;
+	import org.apache.hadoop.io.Text;
+	import org.apache.hadoop.mapreduce.Reducer;
+
+	public class SortReducer extends Reducer<IntPaire, IntWritable, Text, Text> {
+
+		@Override
+		protected void reduce(IntPaire key, Iterable<IntWritable> values,
+				Context context) throws IOException, InterruptedException {
+			// TODO Auto-generated method stub
+			StringBuffer combineValue = new StringBuffer();
+			Iterator<IntWritable> itr = values.iterator();
+			while (itr.hasNext()) {
+				int value = itr.next().get();
+				combineValue.append(value + ",");
+			}
+			int length = combineValue.length();
+			String str = "";
+			if (combineValue.length() > 0) {
+				str = combineValue.substring(0, length - 1);// 去除最后一个逗号
+			}
+			context.write(new Text(key.getFirstKey()), new Text(str));
+		}
+	}
+
+10、编写job代码
+	package com.wy.hadoop.selfkey;
+
+	import java.io.IOException;
+
+	import org.apache.hadoop.conf.Configuration;
+	import org.apache.hadoop.fs.Path;
+	import org.apache.hadoop.io.IntWritable;
+	import org.apache.hadoop.io.Text;
+	import org.apache.hadoop.mapreduce.Job;
+	import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+	import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
+	import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+	public class SortJob {
+
+		/**
+		 * @param args
+		 */
+		public static void main(String[] args)throws IOException, InterruptedException, ClassNotFoundException {
+			Configuration conf = new Configuration();
+		Job job = new Job(conf, "Sortint");
+		job.setJarByClass(SortJob.class);
+		job.setMapperClass(SortMapper.class);
+		job.setReducerClass(SortReducer.class);
+
+		//设置输入格式
+		job.setInputFormatClass(KeyValueTextInputFormat.class);
+
+		//设置map的输出类型
+		job.setMapOutputKeyClass(IntPaire.class);
+		job.setMapOutputValueClass(IntWritable.class);
+
+		//设置排序
+		job.setSortComparatorClass(TextIntComparator.class);
+
+		//设置group
+		job.setGroupingComparatorClass(TextGroupComparator.class);//以key进行grouping
+
+		job.setPartitionerClass(PartitionByText.class);
+		job.setOutputKeyClass(Text.class);
+		job.setOutputValueClass(Text.class);
+		FileInputFormat.addInputPath(job, new Path("/huhui/input/words.txt"));
+		FileOutputFormat.setOutputPath(job, new Path("/output"));
+		System.exit(job.waitForCompletion(true)?0:1);
+
+		}
+
+	}
+
+
+
+
+
+
+
+
+

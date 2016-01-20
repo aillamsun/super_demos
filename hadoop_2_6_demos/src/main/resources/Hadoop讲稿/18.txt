@@ -1,0 +1,214 @@
+Hadoop 实例18----链式MapReduce：ChainMapper、ChainReducer
+
+Hadoop的MR作业支持链式处理，类似在一个生产牛奶的流水线上，每一个阶段都有特定的任务要处理，比如提供牛奶盒，装入牛奶，封盒，打印出厂日期，等等，
+通过这样进一步的分工，从而提高了生产效率，那么在我们的Hadoop的MapReduce中也是如此，支持链式的处理方式，这些Mapper像Linux管道一样，
+前一个Mapper的输出结果直接重定向到下一个Mapper的输入，形成一个流水线，而这一点与Lucene和Solr中的Filter机制是非常类似的，Hadoop项目源自Lucene，
+自然也借鉴了一些Lucene中的处理方式。
+
+举个例子，比如处理文本中的一些禁用词，或者敏感词，等等，Hadoop里的链式操作，支持的形式类似正则Map+ Reduce Map*，代表的意思是全局只能有一个唯一的Reduce，
+但是在Reduce的前后是可以存在无限多个Mapper来进行一些预处理或者善后工作的。
+
+下面来看下如下的测试例子，先看下我们的数据，以及需求。
+
+1、需求分析：
+	数据如下： 
+	手机 5000
+	电脑 2000
+	衣服 300
+	鞋子 1200
+	裙子 434
+	手套 12
+	图书 12510
+	小商品 5
+	小商品 3
+	订餐 2
+
+	* 需求：
+	* 在第一个Mapper里面过滤大于10000万的数据
+	* 第二个Mapper里面过滤掉大于100-10000的数据
+	* Reduce里面进行分类汇总并输出
+	* Reduce后的Mapper里过滤掉商品名长度大于3的数据
+	预计处理完的结果是：
+	手套 12
+	订餐 2
+
+
+2、编码实现--该案例是基于新版mapreduce编写的，安装了mr2环境的同学可以打包执行一下啊。
+
+package com.wy.hadoop.nineteen;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+/**
+ * 过滤到消费金额大于10000的数据
+ * @author Administrator
+ *
+ */
+public class ChainMap1 extends Mapper<LongWritable, Text, Text, Text> {
+
+	@Override
+	protected void map(LongWritable key, Text value,Context context)
+			throws IOException, InterruptedException {
+		String[] arr = value.toString().split(" ");
+		int consume = Integer.valueOf(arr[1]);
+		if(consume<10000){
+			context.write(new Text(arr[0]), new Text(arr[1]));
+		}
+	}
+
+}
+
+
+package com.wy.hadoop.nineteen;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+/**
+ * 过滤到消费金额小于10000大于100的数据
+ * @author Administrator
+ *
+ */
+public class ChainMap2 extends Mapper<Text, Text, Text, Text> {
+
+	@Override
+	protected void map(Text key, Text value,Context context)
+			throws IOException, InterruptedException {
+		int consume = Integer.valueOf(value.toString());
+		if(consume<100){
+			context.write(key, value);
+		}
+	}
+
+}
+
+package com.wy.hadoop.nineteen;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Reducer;
+
+/**
+ * 统计
+ * @author Administrator
+ *
+ */
+public class ChainReduce extends Reducer<Text, Text, Text, Text> {
+
+	@Override
+	protected void reduce(Text key, Iterable<Text> values,Context context)
+			throws IOException, InterruptedException {
+		
+		int sum = 0;
+		for(Text val:values){
+			sum += Integer.valueOf(val.toString());
+		}
+		
+		context.write(key, new Text(String.valueOf(sum)));
+	}
+
+}
+
+package com.wy.hadoop.nineteen;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+/**
+ * 过滤掉key字符大于3的数据
+ * @author Administrator
+ *
+ */
+public class ChainMap3 extends Mapper<Text, Text, Text, Text> {
+
+	@Override
+	protected void map(Text key, Text value,Context context)
+			throws IOException, InterruptedException {
+		if(key.toString().length()<3){
+			context.write(key, value);
+		}
+	}
+
+}
+
+
+package com.wy.hadoop.nineteen;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.lib.chain.ChainMapper;
+import org.apache.hadoop.mapreduce.lib.chain.ChainReducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.Job;
+
+public class JobMain {
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args)throws Exception {
+		Configuration configuration = new Configuration();
+		Job job = new Job(configuration,"chain-job");
+		job.setJarByClass(JobMain.class);
+		
+		job.setMapOutputKeyClass(Text.class);
+		job.setMapOutputValueClass(Text.class);
+		
+		ChainMapper.addMapper(job, ChainMap1.class, LongWritable.class, Text.class, Text.class, Text.class, new Configuration());
+		ChainMapper.addMapper(job, ChainMap2.class, Text.class, Text.class, Text.class, Text.class, new Configuration());
+		ChainReducer.setReducer(job, ChainReducer.class, Text.class, Text.class, Text.class, Text.class, new Configuration());
+		ChainReducer.addMapper(job, ChainMap3.class, Text.class, Text.class, Text.class, Text.class, new Configuration());
+		
+		job.setOutputKeyClass(Text.class);
+		job.setOutputValueClass(Text.class);
+		
+		FileInputFormat.addInputPath(job, new Path(args[0]));
+		Path output = new Path(args[1]);
+		FileSystem fs = FileSystem.get(configuration);
+		if(fs.exists(output)){
+			fs.delete(output,true);
+		}
+		FileOutputFormat.setOutputPath(job, output);
+		
+		System.exit(job.waitForCompletion(true)?0:1);
+		
+	}
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

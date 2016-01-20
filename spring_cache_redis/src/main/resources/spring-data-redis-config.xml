@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mongo="http://www.springframework.org/schema/data/mongo"
+	xsi:schemaLocation="
+          http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+          http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+          http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+          http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+          http://www.springframework.org/schema/data/mongo http://www.springframework.org/schema/data/mongo/spring-mongo-1.0.xsd">
+
+
+	<!-- 加载属性文件
+	<bean class="com.sung.base.common.spring.ZooKeeperPropertyPlaceholderConfigurer">
+		<property name="systemPropertiesModeName" value="SYSTEM_PROPERTIES_MODE_OVERRIDE" />
+		<property name="ignoreResourceNotFound" value="true" />
+		<property name="locations">
+			<list>
+				<value>classpath:redisContext.properties</value>
+			</list>
+		</property>
+	</bean> -->
+
+	<bean id="jedisConnectionFactory" class="com.sung.spring.cache.ShardedJedisConnectionFactory">
+		<property name="masters">
+			<list>
+				<value>shard1</value>
+				<value>shard2</value>
+			</list>
+		</property>
+		<property name="sentinels">
+			<set>
+				<value>192.168.109.212:26379</value>
+				<value>192.168.109.213:26379</value>
+				<value>192.168.109.214:26379</value>
+			</set>
+		</property>
+		<property name="timeout" value="100000"></property>
+	</bean>
+
+
+	<bean id="jedisPoolConfig" class="redis.clients.jedis.JedisPoolConfig">
+		<property name="maxTotal" value="200" />
+		<property name="maxIdle" value="100" />
+		<property name="maxWaitMillis" value="5000" />
+		<property name="testOnBorrow" value="true" />
+	</bean>
+
+	<bean id="redisTemplate" class="org.springframework.data.redis.core.RedisTemplate">
+		<property name="valueSerializer" ref="jackson2JsonRedisSerializer"/>
+		<property name="keySerializer" ref="keySerializer"/>
+		<property name="connectionFactory" ref="jedisConnectionFactory" />
+	</bean>
+
+	<bean id="redisCached" class="com.sung.spring.cache.RedisCachedImpl">
+		<property name="redisTemplate" ref="redisTemplate" />
+		<property name="expire" value="86400" />
+	</bean>
+
+
+	<bean id="jackson2JsonRedisSerializer" class="com.sung.spring.cache.convert.JsonsmartSerializationRedisSerializer"/>
+	<bean id="keySerializer" class="com.sung.spring.cache.convert.StringSerializationSerializer"/>
+
+
+	<bean id="cacheAspect" class="com.sung.spring.cache.convert.CacheAspect">
+		<property name="enableCache" value="true"></property>
+	</bean>
+
+
+	<aop:config proxy-target-class="true"></aop:config>
+
+	<aop:config>
+		<aop:pointcut id="convert" expression="execution(public * com.sung.spring..*.*(..)) and @annotation(org.springframework.cache.annotation.Cacheable)"/>
+		<aop:aspect id="iaspect" ref="cacheAspect" order="0">
+			<aop:around method="cache" pointcut-ref="convert" />
+		</aop:aspect>
+	</aop:config>
+</beans>

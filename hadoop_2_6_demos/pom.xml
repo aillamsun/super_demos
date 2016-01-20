@@ -75,6 +75,18 @@
             <artifactId>hbase-server</artifactId>
             <version>0.96.2-hadoop2</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase</artifactId>
+            <version>0.94.2</version>
+        </dependency>
+        <!-- Maxmind api for resolving ip addresses to location -->
+        <dependency>
+            <groupId>com.maxmind.geoip2</groupId>
+            <artifactId>geoip2</artifactId>
+            <version>0.8.0</version>
+        </dependency>
+
 
         <!--<dependency>
             <groupId>com.ygc.hadoop</groupId>

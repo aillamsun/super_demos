@@ -219,6 +219,8 @@
       <artifactId>castor-xml</artifactId>
       <version>1.3.3</version>
     </dependency>
+
+
     <!--spring-json依赖-->
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
@@ -385,5 +387,9 @@
     <module>spring_mongodb_demos</module>
     <module>spring_elasticsearch_demos</module>
     <module>spring_zookeeper_web_demos</module>
+    <module>spring_cache_redis</module>
+    <module>thread_concurrent_demos</module>
+    <module>design_patterns_demos</module>
+    <module>java_algorithm_sort</module>
   </modules>
 </project>

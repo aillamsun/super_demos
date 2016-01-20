@@ -1,0 +1,257 @@
+Hadoop 案例4----平均成绩  简单问题  （入门级别）
+
+1、需求分析
+	对输入文件中数据进行就算学生平均成绩。输入文件中的每行内容均为一个学生的姓名和他相应的成绩，如果有多门学科，则每门学科为一个文件。
+	要求在输出中每行有两个间隔的数据，其中，第一个代表学生的姓名，第二个代表其平均成绩。
+
+2、原始数据
+1）math：
+
+
+
+张三    88
+
+李四    99
+
+王五    66
+
+赵六    77
+
+
+
+2）china：
+
+
+
+张三    78
+
+李四    89
+
+王五    96
+
+赵六    67
+
+
+
+3）english：
+
+
+
+	张三    80
+
+	李四    82
+
+	王五    84
+
+	赵六    86
+
+ 
+
+    样本输出：
+
+ 
+
+    张三    82
+
+    李四    90
+
+    王五    82
+
+    赵六    76
+
+3、设计思考
+	Map处理的 是一个纯文本文件， 文件中存放的数据时每一行表示一个学生的姓名和他相应一科成绩。Mapper处理的数据是由InputFormat分解过的数据集，
+	其中 InputFormat的作用是将数据集切割成小数据集InputSplit，每一个InputSplit将由一个Mapper负责处理。此 外，InputFormat中还提供了一个RecordReader的实现，
+	并将一个InputSplit解析成<key,value>对提 供给了map函数。InputFormat的默认值是TextInputFormat，它针对文本文件，按行将文本切割成InputSlit，
+	并用 LineRecordReader将InputSplit解析成<key,value>对，key是行在文本中的位置，value是文件中的 一行。
+
+	Map的结果会通过partion分发到Reducer，Reducer做完Reduce操作后，将通过以格式OutputFormat输出。
+
+	Mapper最终处理的结果对<key,value>，会送到Reducer中进行合并，合并的时候，有相同key的键/值对则送到同一个 Reducer上。
+	Reducer是所有用户定制Reducer类地基础，它的输入是key和这个key对应的所有value的一个迭代器，同时还有 Reducer的上下文。
+	Reduce的结果由Reducer.Context的write方法输出到文件中。
+
+4、编写map代码
+	package com.wy.hadoop.avg;
+
+	import java.io.IOException;
+	import java.util.StringTokenizer;
+
+	import org.apache.hadoop.io.IntWritable;
+	import org.apache.hadoop.io.LongWritable;
+	import org.apache.hadoop.io.Text;
+	import org.apache.hadoop.mapreduce.Mapper;
+
+	public class AvgScoreMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+
+		@Override
+		protected void map(LongWritable key, Text value,Context context)
+				throws IOException, InterruptedException {
+			String val = value.toString();
+			StringTokenizer stringTokenizer = new StringTokenizer(val,"\n");
+			while(stringTokenizer.hasMoreElements()){
+				StringTokenizer tmp = new StringTokenizer(stringTokenizer.nextToken());
+				String username = tmp.nextToken();
+				String score = tmp.nextToken();
+				
+				context.write(new Text(username), new IntWritable(Integer.valueOf(score)));
+			}
+			
+		}
+
+	}
+
+
+5、编写reduce代码
+
+	package com.wy.hadoop.avg;
+
+	import java.io.IOException;
+	import java.util.Iterator;
+
+	import org.apache.hadoop.io.IntWritable;
+	import org.apache.hadoop.io.Text;
+	import org.apache.hadoop.mapreduce.Reducer;
+
+	public class AvgScoreReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+
+		@Override
+		protected void reduce(Text key, Iterable<IntWritable> values,Context context)
+				throws IOException, InterruptedException {
+			
+			Iterator<IntWritable> iterator = values.iterator();
+			int count = 0;
+			int sum =0;
+			while(iterator.hasNext()){
+				int v = iterator.next().get();
+				sum += v;
+				count++;
+			}
+			int avg = sum/count;
+			context.write(key, new IntWritable(avg));
+			
+		}
+
+		
+	}
+
+6、编写Main Job函数
+	package com.wy.hadoop.avg;
+
+	import org.apache.hadoop.conf.Configuration;
+	import org.apache.hadoop.fs.FileSystem;
+	import org.apache.hadoop.fs.Path;
+	import org.apache.hadoop.io.IntWritable;
+	import org.apache.hadoop.io.Text;
+	import org.apache.hadoop.mapreduce.Job;
+	import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+	import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+	import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+	import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+	import org.apache.hadoop.util.Tool;
+	import org.apache.hadoop.util.ToolRunner;
+
+	import com.wy.hadoop.join.two.UserJob;
+
+	public class AvgScoreJob extends Configuration implements Tool, Runnable {
+
+		private String inputPath = null;
+		private String outputPath = null;
+		
+		public AvgScoreJob(String inputPath,String outputPath){
+			this.inputPath = inputPath;
+			this.outputPath = outputPath;
+		}
+		public AvgScoreJob(){}
+		
+		@Override
+		public Configuration getConf() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public void setConf(Configuration arg0) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void run() {
+			try{
+				String[] args = {this.inputPath,this.outputPath};
+				
+				start(args);
+				
+			}catch (Exception e) {
+				e.printStackTrace();
+			}
+
+		}
+
+		private void start(String[] args)throws Exception{
+			
+			ToolRunner.run(new UserJob(), args);
+		}
+
+
+		@Override
+		public int run(String[] args) throws Exception {
+			Configuration configuration = new Configuration();
+			FileSystem fs = FileSystem.get(configuration);
+			fs.delete(new Path(args[1]),true);
+			
+			Job job = new Job(configuration,"avgjob");
+			job.setJarByClass(AvgScoreJob.class);
+			
+			job.setInputFormatClass(TextInputFormat.class);
+			
+			job.setMapperClass(AvgScoreMapper.class);
+			job.setReducerClass(AvgScoreReducer.class);
+			
+			job.setOutputFormatClass(TextOutputFormat.class);
+			
+			job.setOutputKeyClass(Text.class);
+			job.setOutputValueClass(IntWritable.class);
+			
+			FileInputFormat.addInputPath(job, new Path(args[0]));
+			FileOutputFormat.setOutputPath(job, new Path(args[1]));
+			
+			
+			boolean success = job.waitForCompletion(true);
+			return success?0:1;
+		}
+
+	}
+
+
+	package com.wy.hadoop.avg;
+
+	public class JobMain {
+
+		/**
+		 * @param args
+		 */
+		public static void main(String[] args) {
+			if(args.length==2){
+				new Thread(new AvgScoreJob(args[0],args[1])).start();
+			}
+			
+		}
+
+	}
+
+
+
+
+
+	8、hadoop jar log.jar com.wy.hadoop.four.JobMain /tmp/demos/4 /tmp/demosout/4
+
+    9、查看结果
+    	好,这样就完成了执行操作,然后看看我们得到的结果如何.从hadoop中取出结果文件.
+
+    	hadoop fs -get /tmp/demosout/4/*
+    	hadoop fs -cat  /tmp/demosout/4/part-r-*
+
+
+

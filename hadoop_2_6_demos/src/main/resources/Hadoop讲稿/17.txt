@@ -1,0 +1,252 @@
+Hadoop 实例17-----MultipleOutputs实战：结果输出到多个文件夹或者文件中
+
+技术说明：
+MapReduce job中,可以使用FileInputFormat和FileOutputFormat来对输入路径和输出路径来进行设置。在输出目录中，框架自己会自动对输出文件进行命名和组织，
+如:part-(m|r)-00000之类。但有时为了后续流程的方便，我们常需要对输出结果进行一定的分类和组织。以前常用的方法是在MR job运行过后，
+用脚本对目录下的数据进行一次重新组织，变成我们需要的格式。研究了一下MR框架中的MultipleOutputs（是2.0之后的新API，
+是对老版本中MultipleOutputs与MultipleOutputFormat的一个整合）。
+
+在一般情况下，Hadoop 每一个 Reducer 产生一个输出文件，文件以
+part-r-00000、part-r-00001 的方式进行命名。如果需要人为的控制输出文件的命
+名或者每一个 Reducer 需要写出多个输出文件时，可以采用 MultipleOutputs 类来
+完成。MultipleOutputs 采用输出记录的键值对（output Key 和 output Value)或者
+任意字符串来生成输出文件的名字，文件一般以 name-r-nnnnn 的格式进行命名，
+其中 name 是程序设置的任意名字；nnnnn 表示分区号。
+
+1、新旧技术API对比
+
+	A、旧API中有 org.apache.hadoop.mapred.lib.MultipleOutputFormat和org.apache.hadoop.mapred.lib.MultipleOutputs
+
+	MultipleOutputFormat allowing to write the output data to different output files.
+
+	MultipleOutputs creates multiple OutputCollectors. Each OutputCollector can have its own OutputFormat and types for the key/value pair. 
+	Your MapReduce program will decide what to output to each OutputCollector.
+
+	B、新API中  org.apache.hadoop.mapreduce.lib.output.MultipleOutputs
+
+	整合了上面旧API两个的功能，没有了MultipleOutputFormat。
+
+	　　The MultipleOutputs class simplifies writing output data to multiple outputs
+
+	　　Case one: writing to additional outputs other than the job default output. Each additional output, or named output, 
+	may be configured with its own 　　　　　　　　　　　　OutputFormat, with its own key class and with its own value class.
+
+	　　Case two: to write data to different files provided by user
+
+	下面这段话来自Hadoop：The.Definitive.Guide(3rd,Early.Release)P251
+
+	　　“In the old MapReduce API there are two classes for producing multiple outputs: MultipleOutputFormat and MultipleOutputs. 
+	In a nutshell, MultipleOutputs is more fully featured, but MultipleOutputFormat has more control over the output directory structure and file naming.
+	MultipleOutputs in the new API combines the best features of the two multiple output classes in the old API.”
+
+2、如何使用
+	输出到多个文件或多个文件夹：
+
+　　驱动中不需要额外改变，只需要在MapClass或Reduce类中加入如下代码
+
+　　private MultipleOutputs<Text,IntWritable> mos;
+　　public void setup(Context context) throws IOException,InterruptedException {
+　　　　mos = new MultipleOutputs(context);
+　　}
+　　public void cleanup(Context context) throws IOException,InterruptedException {
+　　　　mos.close();
+　　}
+　　然后就可以用mos.write(Key key,Value value,String baseOutputPath)代替context.write(key, value);
+　　在MapClass或Reduce中使用，输出时也会有默认的文件part-m-00*或part-r-00*，不过这些文件是无内容的，大小为0. 而且只有part-m-00*会传给Reduce。
+
+	注意：multipleOutputs.write(key, value, baseOutputPath)方法的第三个函数表明了该输出所在的目录（相对于用户指定的输出目录）。
+	如果baseOutputPath不包含文件分隔符“/”，那么输出的文件格式为baseOutputPath-r-nnnnn（name-r-nnnnn)；
+	如果包含文件分隔符“/”，例如baseOutputPath=“029070-99999/1901/part”，那么输出文件则为029070-99999/1901/part-r-nnnnn
+
+3、MultipleOutputs API
+
+	MutipleOutput是调用自己的writer方法来实现输出路径的定制的。首先来看看writer方法的几种重载方式：
+
+	（1）. write(String namedOutput,Text key,IntWritable value) throws IOException,InterruptedException
+
+	将key，value写入到以namedOutput开头的文件中，格式如：{namedOutput}-(m|r)-{part-number}
+
+	（2）.write(Text key,IntWritable value,String baseOutputPath) throws IOException,InterruptedException
+
+	将key，value写入到baseOutputPath所指定的目录下，在目录下系统会自动为文件生成unique的文件名字；
+
+	（3）.write(String namedOutput,Text key,Object value,String baseOutputPath) throws IOException,InterruptedException 应用在第1种和第2种需要共用的场景；
+
+4、案例-需求
+	需求，下面是有些测试数据，要对这些数据按类目输出到output中：
+
+1512,iphone5s,4英寸,指纹识别,A7处理器,64位,M7协处理器,低功耗
+
+1512,iphone5,4英寸,A6处理器,IOS7
+
+1512,iphone4s,3.5英寸,A5处理器,双核,经典
+
+50019780,ipad,9.7英寸,retina屏幕,丰富的应用
+
+50019780,yoga,联想,待机18小时,外形独特
+
+50019780,nexus 7,华硕&google,7英寸
+
+50019780,ipad mini 2,retina显示屏,苹果,7.9英寸
+
+1101,macbook air,苹果超薄,OS X mavericks
+
+1101,macbook pro,苹果,OS X lion
+
+1101,thinkpad yoga,联想,windows 8,超级本
+
+
+5、编写代码-Map
+
+package com.wy.hadoop.sixteen;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+
+public class MultipleMap extends Mapper<LongWritable, Text, IntWritable, Text> {
+
+	@Override
+	protected void map(LongWritable key, Text value,Context context)
+			throws IOException, InterruptedException {
+		String line=value.toString();
+		if(line!=null && line.trim().length()>0){
+			String[] arr = line.split(",");
+			context.write(new IntWritable(Integer.valueOf(arr[0])), new Text(line.trim()));
+		}
+	}
+
+	
+}
+
+6、编写代码-Reduce
+
+package com.wy.hadoop.sixteen;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
+
+public class MultipleReduce extends Reducer<IntWritable, Text, NullWritable, Text> {
+
+	private MultipleOutputs<NullWritable, Text> multipleOutputs = null;
+	
+	@Override
+	protected void cleanup(Context context)
+			throws IOException, InterruptedException {
+		multipleOutputs.close();
+	}
+
+	@Override
+	protected void reduce(IntWritable key, Iterable<Text> values,Context context)
+			throws IOException, InterruptedException {
+		for(Text val:values){
+			multipleOutputs.write("KeySplit", NullWritable.get(), val, key.toString()+"/");
+			multipleOutputs.write("AllData", NullWritable.get(), val);
+		}
+	}
+
+	@Override
+	protected void setup(Context context)
+			throws IOException, InterruptedException {
+		multipleOutputs = new MultipleOutputs<NullWritable, Text>(context);
+	}
+
+	
+}
+
+7、编写代码-JobMain
+package com.wy.hadoop.sixteen;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+
+public class JobMain {
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args)throws Exception {
+		Configuration configuration = new Configuration();
+		Job job = new Job(configuration,"mos-job");
+		job.setJarByClass(JobMain.class);
+		
+		job.setMapperClass(MultipleMap.class);
+		job.setMapOutputKeyClass(IntWritable.class);
+		job.setMapOutputValueClass(Text.class);
+		
+		job.setReducerClass(MultipleReduce.class);
+		job.setOutputKeyClass(NullWritable.class);
+		job.setOutputValueClass(Text.class);
+		
+		MultipleOutputs.addNamedOutput(job, "KeySplit", TextOutputFormat.class, NullWritable.class, Text.class);
+		MultipleOutputs.addNamedOutput(job, "AllData", TextOutputFormat.class, NullWritable.class, Text.class);
+		
+		Path output = new Path(args[1]);
+		FileSystem fs = FileSystem.get(configuration);
+		if(fs.exists(output)){
+			fs.delete(output, true);
+			System.out.println("输出路径存在，已删除！");
+		}
+		
+		FileInputFormat.setInputPaths(job, new Path(args[0]));
+		FileOutputFormat.setOutputPath(job, new Path(args[1]));
+		
+		job.setNumReduceTasks(1);
+		
+		System.exit(job.waitForCompletion(true)?0:1);
+		
+	}
+
+}
+
+8、运行
+	a、数据准备，打jar包
+
+	b、数据转移到hdfs
+		[root@x00 ~]# sudo -u hdfs hadoop fs -mkdir /user/data/sixteen
+		[root@x00 ~]# sudo -u hdfs hadoop fs -put /opt/test/hd/sixteen.txt /user/data/sixteen/
+		[root@x00 ~]# sudo -u hdfs hadoop fs -ls /user/data/sixteen
+		Found 1 items
+		-rw-r--r--   3 hdfs hadoop        486 2014-07-03 11:05 /user/data/sixteen/sixteen.txt
+
+	c、执行
+		sudo -u hdfs hadoop -jar rn.jar com.wy.hadoop.sixteen.JobMain /user/data/sixteen/ /user/data/sixteen/output
+
+	d、检查结果
+		[root@x00 ~]# sudo -u hdfs hadoop fs -ls /user/data/sixteen/output
+		Found 7 items
+		drwxr-xr-x   - hdfs hadoop          0 2014-07-03 11:08 /user/data/sixteen/output/1101
+		drwxr-xr-x   - hdfs hadoop          0 2014-07-03 11:08 /user/data/sixteen/output/1512
+		drwxr-xr-x   - hdfs hadoop          0 2014-07-03 11:08 /user/data/sixteen/output/50019780
+		-rw-r--r--   3 hdfs hadoop        486 2014-07-03 11:08 /user/data/sixteen/output/AllData-r-00000
+		-rw-r--r--   3 hdfs hadoop          0 2014-07-03 11:08 /user/data/sixteen/output/_SUCCESS
+		drwxr-xr-x   - hdfs hadoop          0 2014-07-03 11:07 /user/data/sixteen/output/_logs
+		-rw-r--r--   3 hdfs hadoop          0 2014-07-03 11:08 /user/data/sixteen/output/part-r-00000
+		[root@x00 ~]# sudo -u hdfs hadoop fs -ls /user/data/sixteen/output/1101
+		Found 1 items
+		-rw-r--r--   3 hdfs hadoop        125 2014-07-03 11:08 /user/data/sixteen/output/1101/-r-00000
+		[root@x00 ~]# sudo -u hdfs hadoop fs -cat /user/data/sixteen/output/1101/*
+		1101,macbook air,苹果超薄,OS X mavericks
+		1101,macbook pro,苹果,OS X lion
+		1101,thinkpad yoga,联想,windows 8,超级本
+
+
+
+

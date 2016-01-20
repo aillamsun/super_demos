@@ -1,0 +1,348 @@
+----Hadoop 实例9  Join讲解2: 将人员的地址ID完善成为地址名称，输出格式要求：人员Id，姓名，地址
+
+1、原始数据
+	人员ID 人员名称 地址ID
+1	张三	1
+2	李四	2
+3	王五	1
+4	赵六	3
+5	马七	3
+
+	另外一组为地址信息:
+	地址ID 地址名称
+1	北京
+2	上海
+3	广州
+
+2、处理说明
+	这里给出了一个很简单的例子,而且数据量很小,就这么用眼睛就能看过来的几行,当然,实际的情况可能是几十万上百万甚至上亿的数据量.
+	要实现的功能很简单, 就是将人员信息与地址信息进行join,将人员的地址ID完善成为地址名称.
+	对于Hadoop文件系统的应用,目前看来,很多数据的存储都是基于文本的, 而且都是将数据放在一个文件目录中进行处理.因此我们这里也采用这种模式来完成.
+
+	对于mapreduce程序来说,最主要的就是将要做的工作转化为map以及reduce两个部分.
+	我们可以将地址以及人员都采用同样的数据结构来存储,通 过一个flag标志来指定该数据结构里面存储的是地址信息还是人员信息.
+	经过map后,使用地址ID作为key,将所有的具有相同地址的地址信息和人员信 息放入一个key->value list数据结构中传送到reduce中进行处理.
+	在reduce过程中,由于key是地址的ID,所以value list中只有一个是地址信息,其他的都是人员信息,因此,找到该地址信息后,其他的人员信息的地址就是该地址所指定的地址名称.
+
+	OK,我们的join算法基本搞定啦.剩下就是编程实现了,let’s go.
+
+3、中间bean实现
+	上面提到了存储人员和地址信息的数据结构,可以说这个数据结构是改程序的重要的数据载体之一.我们先来看看该数据结构:
+	package com.wy.hadoop.join.two;
+
+	import java.io.DataInput;
+	import java.io.DataOutput;
+	import java.io.IOException;
+
+	import org.apache.hadoop.io.WritableComparable;
+
+	public class User implements WritableComparable {
+
+		private String userNo;
+		private String userName;
+		private String cityName;
+		private String cityNo;
+		private int flag;
+		
+		public User(){};
+		
+		public User(User u){
+			this.userNo = u.getUserNo();
+			this.userName = u.getUserName();
+			this.cityNo = u.getCityNo();
+			this.cityName = u.getCityName();
+			this.flag = u.getFlag();
+		}
+		public User(String userNo,String userName,String cityNo,String cityName,int flag){
+			this.userName = userName;
+			this.userNo = userNo;
+			this.cityName = cityName;
+			this.cityNo = cityNo;
+			this.flag = flag;
+		}
+		@Override
+		public void readFields(DataInput input) throws IOException {
+			// TODO Auto-generated method stub
+			this.userNo=input.readUTF();
+			this.userName = input.readUTF();
+			this.cityName = input.readUTF();
+			this.cityNo = input.readUTF();
+			this.flag = input.readInt();
+		}
+
+		@Override
+		public void write(DataOutput output) throws IOException {
+			// TODO Auto-generated method stub
+			output.writeUTF(this.userNo);
+			output.writeUTF(this.userName);
+			output.writeUTF(this.cityName);
+			output.writeUTF(this.cityNo);
+			output.writeInt(this.flag);
+			
+		}
+
+		@Override
+		public int compareTo(Object o) {
+			// TODO Auto-generated method stub
+			return 0;
+		}
+
+		public String getUserNo() {
+			return userNo;
+		}
+
+		public void setUserNo(String userNo) {
+			this.userNo = userNo;
+		}
+
+		public String getUserName() {
+			return userName;
+		}
+
+		public void setUserName(String userName) {
+			this.userName = userName;
+		}
+
+		public String getCityName() {
+			return cityName;
+		}
+
+		public void setCityName(String cityName) {
+			this.cityName = cityName;
+		}
+
+		public String getCityNo() {
+			return cityNo;
+		}
+
+		public void setCityNo(String cityNo) {
+			this.cityNo = cityNo;
+		}
+
+		public int getFlag() {
+			return flag;
+		}
+
+		public void setFlag(int flag) {
+			this.flag = flag;
+		}
+
+		@Override
+		public String toString() {
+			String string = this.userNo+","+this.userName+","+this.cityName;
+			return string;
+		}
+
+	}
+
+
+4、实现map
+	package com.wy.hadoop.join.two;
+
+	import java.io.IOException;
+
+	import org.apache.hadoop.io.LongWritable;
+	import org.apache.hadoop.io.Text;
+	import org.apache.hadoop.mapreduce.Mapper;
+
+	public class UserMapper extends Mapper<LongWritable, Text, LongWritable, User> {
+
+		@Override
+		protected void map(LongWritable key, Text value,
+				Context context)
+				throws IOException, InterruptedException {
+			
+			String val = value.toString();
+			String[] arr = val.split("\t");
+			if(arr.length==2){//city
+				User user = new User();
+				user.setCityNo(arr[0]);
+				user.setCityName(arr[1]);
+				user.setFlag(1);
+				context.write(new LongWritable(Long.valueOf(user.getUserNo())),user);
+			}else{//user
+				User user = new User();
+				user.setUserNo(arr[0]);
+				user.setUserName(arr[1]);
+				user.setCityNo(arr[2]);
+				user.setFlag(0);
+				context.write(new LongWritable(Long.valueOf(user.getCityNo())), user);
+			}
+			
+		}
+
+		
+	}
+
+5、实现reduce
+	package com.wy.hadoop.join.two;
+
+	import java.io.IOException;
+	import java.util.ArrayList;
+	import java.util.List;
+
+	import org.apache.hadoop.io.LongWritable;
+	import org.apache.hadoop.io.Text;
+	import org.apache.hadoop.mapreduce.Reducer;
+
+	public class UserReducer extends Reducer<LongWritable, User, LongWritable, Text> {
+		
+
+		@Override
+		protected void reduce(LongWritable key, Iterable<User> iter, Context context)
+				throws IOException, InterruptedException {
+			User city = null;
+			List<User> list = new ArrayList<User>();
+			for(User u: iter){
+				if(u.getFlag()==0){
+					User tmp = new User(u);
+					list.add(tmp);
+				}else{
+					city = new User(u);
+					
+				}
+			}
+		
+			for(User tmp : list){
+				tmp.setCityName(city.getCityName());
+				context.write(new LongWritable(0), new Text(tmp.toString()));
+			}
+		}
+
+		
+	}
+
+6、实现main函数
+	package com.wy.hadoop.join.two;
+
+	import org.apache.hadoop.conf.Configuration;
+	import org.apache.hadoop.fs.FileSystem;
+	import org.apache.hadoop.fs.Path;
+	import org.apache.hadoop.io.LongWritable;
+	import org.apache.hadoop.io.SequenceFile;
+	import org.apache.hadoop.io.Text;
+	import org.apache.hadoop.mapreduce.Job;
+	import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+	import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+	import org.apache.hadoop.util.Tool;
+	import org.apache.hadoop.util.ToolRunner;
+
+	public class UserJob extends Configuration implements Tool, Runnable {
+
+		private String inputPath = null;
+		private String outputPath = null;
+		
+		public UserJob(String inputPath,String outputPath){
+			this.inputPath = inputPath;
+			this.outputPath = outputPath;
+		}
+		public UserJob(){}
+		
+		@Override
+		public Configuration getConf() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public void setConf(Configuration arg0) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void run() {
+			try{
+				String[] args = {this.inputPath,this.outputPath};
+				
+				start(args);
+				
+			}catch (Exception e) {
+				e.printStackTrace();
+			}
+
+		}
+
+		private void start(String[] args)throws Exception{
+			
+			ToolRunner.run(new UserJob(), args);
+		}
+
+
+		@Override
+		public int run(String[] args) throws Exception {
+			
+			FileSystem fs = FileSystem.get(getConf());
+			fs.delete(new Path(args[1]), true);
+			
+			Job job = new Job(getConf(),"userjob");
+			job.setJarByClass(UserJob.class);
+			
+			job.setMapOutputKeyClass(LongWritable.class);
+			job.setMapOutputValueClass(User.class);
+			
+			job.setOutputKeyClass(LongWritable.class);
+			job.setOutputValueClass(Text.class);
+			
+			job.setMapperClass(UserMapper.class);
+			job.setReducerClass(UserReducer.class);
+			
+			FileInputFormat.addInputPath(job, new Path(args[0]));
+			FileOutputFormat.setOutputPath(job, new Path(args[1]));
+			
+			boolean success = job.waitForCompletion(true);
+			
+			//输出结果
+			Path path = new Path(args[1],"part-0000");
+			SequenceFile.Reader reader = new SequenceFile.Reader(fs, path, getConf());
+			Text valueText = new Text();
+			LongWritable key = new LongWritable();
+			
+			while(reader.next(key, valueText)){
+				System.out.println(key.toString() +"    "+ valueText.toString());
+			}
+			
+			return success?0:1;
+			
+		}
+
+	}
+
+
+	package com.wy.hadoop.join.two;
+
+	public class JobMain {
+
+		/**
+		 * @param args
+		 */
+		public static void main(String[] args) {
+			if(args.length==2){
+				new Thread(new UserJob(args[0],args[1])).start();
+			}
+			
+		}
+
+	}
+
+8、打成jar，只需要打包对应的源代码即可，上传到/opt/mapred/job/3 目录下面 join2.jar
+
+9、/opt/mapred/job/3 下创建文件source.txt 并把需要分析的文本数据copy到该文件中
+
+10、执行 hadoop fs -put source.txt /user/root/data/3/source.txt 将文件存放在hdfs中
+
+11、hadoop jar join2.jar com.wy.hadoop.join.two.JobMain /user/root/data/3/source.txt /user/root/output/3
+
+12、查看结果
+
+
+
+
+
+
+
+
+
+
+
+

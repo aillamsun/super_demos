@@ -1,0 +1,24 @@
+
+hadoop fs -mkdir -p /tmp/controlledJobsample/example01
+
+测试数据:
+http://grouplens.org/datasets/movielens/
+
+
+hadoop fs -put ratings.dat /tmp/controlledJobsample/example01
+
+
+hadoop jar controlledJobsample.jar hadoop2_6.controlledJobsample.example01.Main /tmp/controlledJobsample/example01 /tmp/controlledJobsample/example01/out_one /tmp/controlledJobsample/example01/out_two
+
+
+//第一个job
+hadoop fs -get /tmp/controlledJobsample/example01/out_one
+hadoop fs -cat /tmp/controlledJobsample/example01/out_one/part-*
+
+
+//第二个job
+hadoop fs -get /tmp/controlledJobsample/example01/out_two
+hadoop fs -cat /tmp/controlledJobsample/example01/out_two/part-*
+
+
+

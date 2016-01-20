@@ -1,0 +1,41 @@
+Hadoop案例实战课程
+
+Hadoop 实例1-----通过采集的气象数据分析每年的最高温度（入门级别）
+
+Hadoop 案例2-----数据去重问题  简单问题  （入门级别）
+
+Hadoop 案例3-----数据排序  简单问题  （入门级别）
+
+Hadoop 案例4-----平均成绩  简单问题  （入门级别）
+
+Hadoop 案例5-----求最大最小值问题：SELECT MAX(NUMBER),MIN(NUMBER) FROM TABLE 获取某列的最大值和最小值
+
+Hadoop 案例6-----TopN问题：求最大的K个值并排序
+
+Hadoop 案例7-----日志分析：分析URL的访问量
+
+Hadoop 实例8-----Join讲解1: 获取员工所在部门信息，输出格式要求：员工编号，员工姓名，部门名称，部门编号
+
+Hadoop 实例9-----Join讲解2: 将人员的地址ID完善成为地址名称，输出格式要求：人员Id，姓名，地址
+
+Hadoop 实例10-----Join讲解3: 将人员的地址ID完善成为地址名称，输出格式要求：人员Id，姓名，地址 ----优化方案
+
+Hadoop 实例11-----二次排序讲解与案例分析
+
+Hadoop 案例12-----自连接问题案例分析  
+
+Hadoop 案例13-----倒排索引案例分析
+
+Hadoop 案例14-----多维度排序：多字段排序
+
+Hadoop 实例15-----MultipleInputs实战1：多文件输入执行join操作
+
+Hadoop 实例16-----MultipleInputs实战2：多种自定义文件格式的文件输入处理
+
+Hadoop 实例17-----MultipleOutputs实战：结果输出到多个文件夹或者文件中
+
+Hadoop 实例18----链式MapReduce：ChainMapper、ChainReducer
+
+Hadoop 实例19----迭代式MapReduce：解决PR计算问题 
+
+Hadoop 实例20----优化

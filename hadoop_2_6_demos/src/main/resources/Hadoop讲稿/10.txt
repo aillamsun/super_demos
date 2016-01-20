@@ -1,0 +1,348 @@
+----Hadoop 实例10  Join讲解3: 将人员的地址ID完善成为地址名称，输出格式要求：人员Id，姓名，地址 ----优化方案
+
+1、原始数据
+	人员ID 人员名称 地址ID
+	1 张三 1
+	2 李四 2
+	3 王五 1
+	4 赵六 3
+	5 马七 3
+
+	另外一组为地址信息:
+	地址ID 地址名称
+	1 北京
+	2 上海
+	3 广州
+
+        1 北京
+	1 张三
+	1 王五
+
+2、处理说明
+	该处理接着上一讲，我们对这个实现进行了总结,最主要的问题就是实现的可扩展性,由于在reduce端我们通过一个List数据结构保存了所有的某个外键的对应的所有人员信息,
+	而List的最大值为Integer.MAX_VALUE,所以 在数据量巨大的时候,会造成List越界的错误.所以对这个实现的优化显得很有必要.
+3、优化说明
+	结合第一种实现方式,我们看到第一种方式最需要改进的地方就是如果对于某个地址ID的迭代器values,如果values的第一个元素是地址信息的话,
+	那么,我们就不需要缓存所有的人员信息了.如果第一个元素是地址信息,我们读出地址信息后,后来就全部是人员信息,那么就可以将人员的地址置为相应的地址.
+
+	现在我们回头看看mapreduce的partition和shuffle的过程,partitioner的主要功能是根据reduce的数量将map输出 的结果进行分块,将数据送入到相应的reducer,
+	所有的partitioner都必须实现Partitioner接口并实现getPartition 方法,该方法的返回值为int类型,并且取值范围在0-numOfReducer-1,
+	从而能够将map的输出输入到相应的reducer中,对于某个 mapreduce过程,Hadoop框架定义了默认的partitioner为HashPartition,
+	该Partitioner使用key的 hashCode来决定将该key输送到哪个reducer;shuffle将每个partitioner输出的结果根据key进行group以及排序, 
+	将具有相同key的value构成一个valeus的迭代器,并根据key进行排序分别调用开发者定义的reduce方法进行归并.
+	从shuffle的过 程我们可以看出key之间需要进行比较,通过比较才能知道某两个key是否相等或者进行排序,
+	因此mapduce的所有的key必须实现 comparable接口的compareto()方法从而实现两个key对象之间的比较.
+
+	回到我们的问题,我们想要的是将地址信息在排序的过程中排到最前面,前面我们只通过locId进行比较的方法就不够用了,
+	因为其无法标识出是地址表中的数据 还是人员表中的数据.因此,我们需要实现自己定义的Key数据结构,完成在想共同locId的情况下地址表更小的需求.
+	由于map的中间结果需要写到磁盘 上,因此必须实现writable接口.具体实现如下:
+
+
+4、构造用于排序的key
+	package com.wy.hadoop.join.two.optimization;
+
+	import java.io.DataInput;
+	import java.io.DataOutput;
+	import java.io.IOException;
+
+	import org.apache.hadoop.io.WritableComparable;
+
+	public class UserKey implements WritableComparable<UserKey>{
+
+		private int keyid;
+		private boolean isPrimary;
+		
+		@Override
+		public void readFields(DataInput dataInput) throws IOException {
+			// TODO Auto-generated method stub
+			this.keyid = dataInput.readInt();
+			this.isPrimary = dataInput.readBoolean();
+		}
+
+		@Override
+		public void write(DataOutput dataOutput) throws IOException {
+			// TODO Auto-generated method stub
+			dataOutput.writeInt(this.keyid);
+			dataOutput.writeBoolean(this.isPrimary);
+		}
+
+		@Override
+		public int compareTo(UserKey o) {//shuffle阶段 排序使用
+			if(this.keyid==o.keyid){
+				if(this.isPrimary==o.isPrimary){
+					return 0;
+				}else{
+					return this.isPrimary?-1:1;
+				}
+			}else{
+				return this.keyid>o.keyid?1:-1;
+			}
+		}
+
+		//The hashCode() method is used by the HashPartitioner (the default partitioner in MapReduce)  
+		@Override
+		public int hashCode() {//partition 使用key的hashCode方法决定该记录发往那个一reduce numOfReduce-1
+			// TODO Auto-generated method stub
+			return this.keyid;
+		}
+
+		public int getKeyid() {
+			return keyid;
+		}
+
+		public void setKeyid(int keyid) {
+			this.keyid = keyid;
+		}
+
+		public boolean isPrimary() {
+			return isPrimary;
+		}
+
+		public void setPrimary(boolean isPrimary) {
+			this.isPrimary = isPrimary;
+		}
+
+	}
+
+
+5、构造用于group的比较器
+	 有 了这个数据结构,我们又发现了一个新的问题------就是shuffle的group过程,shuffle的group过程默认使用的是key的 compareTo()方法.
+	 刚才我们添加的自定义Key没有办法将具有相同的locId的地址和人员放到同一个group中(因为从compareTo 方法中可以看出他们是不相等的).
+	 不过hadoop框架提供了OutputValueGoupingComparator可以让使用者自定义key的 group信息.
+	 我们需要的就是自己定义个groupingComparator就可以啦!看看这个比较器吧!
+
+	package com.wy.hadoop.join.two.optimization;
+
+	import org.apache.hadoop.io.WritableComparable;
+	import org.apache.hadoop.io.WritableComparator;
+
+	public class PKFKComparator extends WritableComparator {
+
+		protected PKFKComparator(UserKey keyClass) {
+			super(UserKey.class);
+		}
+		public PKFKComparator(){
+			super(UserKey.class);
+		}
+		@Override
+		public int compare(WritableComparable a, WritableComparable b) {
+			UserKey a1 = (UserKey)a;
+			UserKey b1 = (UserKey)b;
+			System.out.println(" call pkfk comparator");
+			if(a1.getKeyid() == b1.getKeyid()){
+				return 0;
+			}else{
+				return a1.getKeyid()>b1.getKeyid()?1:-1;
+			}
+			
+		}
+		
+		
+	}
+
+6、编写map代码
+	package com.wy.hadoop.join.two.optimization;
+
+	import java.io.IOException;
+
+	import org.apache.hadoop.io.LongWritable;
+	import org.apache.hadoop.io.Text;
+	import org.apache.hadoop.mapreduce.Mapper;
+
+	import com.wy.hadoop.join.two.User;
+
+	public class UserMapper extends Mapper<LongWritable, Text, UserKey, User> {
+
+		@Override
+		protected void map(LongWritable key, Text value,
+				Context context)
+				throws IOException, InterruptedException {
+			
+			String val = value.toString();
+			String[] arr = val.split("\t");
+			if(arr.length==2){//city
+				User user = new User();
+				user.setCityNo(arr[0]);
+				user.setCityName(arr[1]);
+				user.setFlag(1);
+				
+				UserKey uKey = new UserKey();
+				uKey.setKeyid(Integer.valueOf(arr[0]));
+				uKey.setPrimary(false);
+				
+				context.write(uKey,user);
+				
+			}else{//user
+				User user = new User();
+				user.setUserNo(arr[0]);
+				user.setUserName(arr[1]);
+				user.setCityNo(arr[2]);
+				user.setFlag(0);
+				
+				UserKey uKey = new UserKey();
+				uKey.setKeyid(Integer.valueOf(arr[2]));
+				uKey.setPrimary(true);
+				
+				context.write(uKey, user);
+			}
+			
+		}
+
+		
+
+	}
+
+
+7、编写reduce代码
+	package com.wy.hadoop.join.two.optimization;
+
+	import java.io.IOException;
+
+	import org.apache.hadoop.io.LongWritable;
+	import org.apache.hadoop.io.Text;
+	import org.apache.hadoop.mapreduce.Reducer;
+
+	public class UserReducer extends Reducer<UserKey, User, LongWritable, Text> {
+
+		@Override
+		protected void reduce(UserKey key, Iterable<User> iter,Context context)
+				throws IOException, InterruptedException {
+			
+			User city = new User();
+			int num = 0;
+			for(User u:iter){//第一个数据是city
+				if(num==0){
+					city = new User(u);
+				}else{
+					User tmp = new User(u);
+					tmp.setCityName(city.getCityName());
+					context.write(new LongWritable(Long.valueOf(tmp.getUserNo())), new Text(tmp.toString()));
+				}
+				num++;
+			}
+			
+		}
+
+		
+	}
+
+8、jobMain函数编写
+	package com.wy.hadoop.join.two.optimization;
+
+	import org.apache.hadoop.conf.Configuration;
+	import org.apache.hadoop.fs.FileSystem;
+	import org.apache.hadoop.fs.Path;
+	import org.apache.hadoop.io.LongWritable;
+	import org.apache.hadoop.io.SequenceFile;
+	import org.apache.hadoop.io.Text;
+	import org.apache.hadoop.mapreduce.Job;
+	import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+	import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+	import org.apache.hadoop.util.Tool;
+	import org.apache.hadoop.util.ToolRunner;
+
+	public class UserJob extends Configuration implements Tool, Runnable {
+
+		private String inputPath = null;
+		private String outputPath = null;
+		
+		public UserJob(String inputPath,String outputPath){
+			this.inputPath = inputPath;
+			this.outputPath = outputPath;
+		}
+		public UserJob(){}
+		
+		@Override
+		public Configuration getConf() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public void setConf(Configuration arg0) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void run() {
+			try{
+				String[] args = {this.inputPath,this.outputPath};
+				
+				start(args);
+				
+			}catch (Exception e) {
+				e.printStackTrace();
+			}
+
+		}
+
+		private void start(String[] args)throws Exception{
+			
+			ToolRunner.run(new UserJob(), args);
+		}
+
+		@Override
+		public int run(String[] args) throws Exception {
+			Configuration configuration = new Configuration();
+			FileSystem fs = FileSystem.get(configuration);
+			fs.delete(new Path(args[1]), true);
+			
+			Job job = new Job(configuration,"userjob-new");
+			job.setJarByClass(UserJob.class);
+			
+			job.setMapOutputKeyClass(UserKey.class);
+			job.setMapOutputValueClass(User.class);
+			
+			job.setOutputKeyClass(LongWritable.class);
+			job.setOutputValueClass(Text.class);
+			
+			job.setGroupingComparatorClass(PKFKComparator.class);
+			
+			FileInputFormat.addInputPath(job, new Path(args[0]));
+			FileOutputFormat.setOutputPath(job, new Path(args[1]));
+			
+			boolean success = job.waitForCompletion(true);
+			
+			Path file = new Path(args[1], "part-0000");
+			LongWritable key = new LongWritable();
+			Text value = new Text();
+			SequenceFile.Reader reader = new SequenceFile.Reader(fs, file, configuration);
+			while (reader.next(key, value)) {
+				System.out.println(key.toString() +"   "+value.toString());
+			}
+			
+			return success?0:1;
+		}
+
+	}
+
+
+	package com.wy.hadoop.join.two.optimization;
+
+	public class JobMain {
+
+		/**
+		 * @param args
+		 */
+		public static void main(String[] args) {
+			if(args.length==2){
+				new Thread(new UserJob(args[0],args[1])).start();
+			}
+			
+		}
+
+	}
+
+
+9、打成jar，只需要打包对应的源代码即可，上传到/opt/mapred/job/4 目录下面 join3.jar
+
+10、/opt/mapred/job/4 下创建文件source.txt 并把需要分析的文本数据copy到该文件中
+
+11、执行 hadoop fs -put source.txt /user/root/data/4/source.txt 将文件存放在hdfs中
+
+12、hadoop jar join3.jar com.wy.hadoop.join.two.optimization.JobMain /user/root/data/4/source.txt /user/root/output/4
+
+13、查看结果
+
+

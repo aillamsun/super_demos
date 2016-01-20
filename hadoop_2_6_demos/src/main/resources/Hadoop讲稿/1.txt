@@ -1,0 +1,158 @@
+----Hadoop 实例1 通过采集的气象数据分析每年的最高温度
+1、原始数据分析
+0067011990999991950051507004888888889999999N9+00001+9999999999999999999999
+0067011990999991950051512004888888889999999N9+00221+9999999999999999999999
+0067011990999991950051518004888888889999999N9-00111+9999999999999999999999
+0067011990999991949032412004888888889999999N9+01111+9999999999999999999999
+0067011990999991950032418004888888880500001N9+00001+9999999999999999999999
+0067011990999991950051507004888888880500001N9+00781+9999999999999999999999
+
+数据说明： 
+	第15-19个字符是year
+	第45-50位是温度表示，+表示零上 -表示零下，且温度的值不能是9999，9999表示异常数据
+	第50位值只能是0、1、4、5、9几个数字
+2、根据要求编写map任务
+
+	package com.wy.hadoop.temperature;
+
+	import java.io.IOException;
+
+	import org.apache.hadoop.io.IntWritable;
+	import org.apache.hadoop.io.LongWritable;
+	import org.apache.hadoop.io.Text;
+	import org.apache.hadoop.mapreduce.Mapper;
+
+	public class NewMaxTemperatureMapper extends
+			Mapper<LongWritable, Text, Text, IntWritable> {
+		private static final int MISSING = 9999;
+
+		@Override
+		public void map(LongWritable key, Text value,
+
+		Context context) throws IOException, InterruptedException {
+
+			String line = value.toString();
+
+			System.out.println("key: " + key);
+
+			String year = line.substring(15, 19);
+
+			int airTemperature;
+
+			if (line.charAt(45) == '+') {
+
+				airTemperature = Integer.parseInt(line.substring(46, 50));
+
+			} else {
+
+				airTemperature = Integer.parseInt(line.substring(45, 50));
+
+			}
+
+			String quality = line.substring(50, 51);
+
+			System.out.println("quality: " + quality);
+
+			if (airTemperature != MISSING && quality.matches("[01459]")) {
+
+				context.write(new Text(year), new IntWritable(airTemperature));
+
+			}
+		}
+	}
+
+3、根据要求编写reduce任务
+	package com.wy.hadoop.temperature;
+
+	import java.io.IOException;
+
+	import org.apache.hadoop.io.IntWritable;
+	import org.apache.hadoop.io.Text;
+	import org.apache.hadoop.mapreduce.Reducer;
+
+	public class NewMaxTemperatureReducer extends
+			Reducer<Text, IntWritable, Text, IntWritable> {
+
+		@Override
+		protected void reduce(Text key, Iterable<IntWritable> values,
+				Context context)
+				throws IOException, InterruptedException {
+			
+			int maxValue = Integer.MIN_VALUE;
+
+			for(IntWritable value: values){
+
+				maxValue = Math.max(maxValue, value.get());
+
+			}
+
+
+			context.write(key, new IntWritable(maxValue));
+		}
+		
+	}
+
+
+4、编写job代码
+	package com.wy.hadoop.temperature;
+
+	import org.apache.hadoop.fs.Path;
+	import org.apache.hadoop.io.IntWritable;
+	import org.apache.hadoop.io.Text;
+	import org.apache.hadoop.mapreduce.Job;
+	import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+	import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+	public class NewMaxTemperature {
+
+		/**
+		 * @param args
+		 */
+		public static void main(String[] args)throws Exception {
+			if (args.length != 2) {
+
+				System.err.print("Usage: MaxTemperature<input path> <output path>");
+
+				System.exit(-1);
+
+			}
+
+			Job job = new Job();
+
+			job.setJarByClass(NewMaxTemperature.class);
+
+			FileInputFormat.addInputPath(job, new Path(args[0]));
+
+			FileOutputFormat.setOutputPath(job, new Path(args[1]));
+
+			job.setMapperClass(NewMaxTemperatureMapper.class);
+
+			job.setReducerClass(NewMaxTemperatureReducer.class);
+
+			job.setOutputKeyClass(Text.class);
+
+			job.setOutputValueClass(IntWritable.class);
+
+			System.exit(job.waitForCompletion(true) ? 0 : 1);
+
+		}
+
+	}
+
+
+
+8、hadoop jar log.jar com.wy.hadoop.one.JobMain /tmp/demos/1/data /tmp/demosout/1
+
+9、查看结果
+	好,这样就完成了执行操作,然后看看我们得到的结果如何.从hadoop中取出结果文件.
+
+	hadoop fs -get /tmp/demosout/1/*
+	hadoop fs -cat  /tmp/demosout/1/part-r-*
+
+	1949    111
+
+	1950    78
+
+
+
+

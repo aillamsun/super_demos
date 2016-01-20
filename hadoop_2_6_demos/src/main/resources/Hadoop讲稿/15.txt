@@ -1,0 +1,361 @@
+----Hadoop 实例15  MultipleInputs实战2：多文件输入执行join操作
+
+hadoop多文件格式输入，一般可以使用MultipleInputs类指定不同的输入文件路径以及输入文件格式。
+
+1、需求:
+
+	比如现在有如下的需求：
+
+	现有两份数据：
+
+	phone：
+
+
+123,good number  
+124,common number  
+125,bad number  
+
+	user：
+
+zhangsan,123  
+lisi,124  
+wangwu,125  
+
+
+	现在需要把user和phone按照phone number连接起来，得到下面的结果：
+
+	    zhangsan,123,good number  
+	    lisi,123,common number  
+	    wangwu,125,bad number  
+
+2、编码实现
+FlagStringDataType.java
+package com.wy.hadoop.thirteen;
+
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
+import org.apache.hadoop.io.WritableComparable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+
+public class FlagStringDataType implements WritableComparable<FlagStringDataType> {
+	private Logger log = LoggerFactory.getLogger(FlagStringDataType.class);
+
+	private String value;
+	private int flag;
+	
+	
+	public FlagStringDataType(){
+		
+	}
+	public FlagStringDataType(int flag,String value){
+		this.value = value;
+		this.flag = flag;
+	}
+	@Override
+	public void readFields(DataInput input) throws IOException {
+		log.info("read input : flag = "+flag+" value="+value);
+		flag = input.readInt();
+		value = input.readUTF();
+		log.info("read input : flag = "+flag+" value="+value);
+	}
+
+	@Override
+	public void write(DataOutput output) throws IOException {
+		log.info("write output : flag = "+flag+" value="+value);
+		output.writeInt(flag);
+		output.writeUTF(value);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		return obj!=null && getClass().equals(obj.getClass()) && ((FlagStringDataType)obj).getFlag()==flag &&((FlagStringDataType)obj).getValue()==value;
+	}
+	@Override
+	public int compareTo(FlagStringDataType o) {
+		if(this.flag>=o.flag){
+			if(this.flag>o.flag){
+				return 1;
+			}
+		}else{
+			return -1;
+		}
+		return this.value.compareTo(o.value);
+	}
+	public String getValue() {
+		return value;
+	}
+	public void setValue(String value) {
+		this.value = value;
+	}
+	public int getFlag() {
+		return flag;
+	}
+	public void setFlag(int flag) {
+		this.flag = flag;
+	}
+	@Override
+	public String toString() {
+		return "flag:"+flag+" value:"+value;
+	}
+	
+	
+}
+
+3、Map实现
+package com.wy.hadoop.thirteen;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+/**
+ * input : phone,description
+ * @author Administrator
+ *
+ */
+public class MultipleMapper1 extends Mapper<LongWritable, Text, Text, FlagStringDataType> {
+
+	private Logger log = LoggerFactory.getLogger(MultipleMapper1.class);
+	private String delimiter = null;
+	@Override
+	protected void setup(Context context) throws IOException,
+			InterruptedException {
+		delimiter = context.getConfiguration().get("delimiter", ",");
+		log.info("map1 setup()  == delimiter:"+delimiter);
+	}
+
+	@Override
+	protected void map(LongWritable key, Text value,Context context)
+			throws IOException, InterruptedException {
+		String[] values = value.toString().split(delimiter);
+		if(values.length==2){
+			log.info("key="+values[0]+" value 0 ="+values[1]);
+			context.write(new Text(values[0].trim()), new FlagStringDataType(1,values[1].trim()));
+		}else{
+			return;
+		}
+		
+	}
+
+}
+
+package com.wy.hadoop.thirteen;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * input : user,phone
+ * @author Administrator
+ *
+ */
+public class MultipleMapper2 extends Mapper<LongWritable, Text, Text, FlagStringDataType> {
+
+	private Logger log = LoggerFactory.getLogger(MultipleMapper2.class);
+	private String delimiter = null;
+	@Override
+	protected void map(LongWritable key, Text value,Context context)
+			throws IOException, InterruptedException {
+		String[] values = value.toString().split(delimiter);
+		if(values.length==2){
+			log.info("key= "+values[1]+" value="+values[0]);
+			context.write(new Text(values[1].trim()), new FlagStringDataType(0,values[0].trim()));
+		}else{
+			return;
+		}
+	}
+
+	@Override
+	protected void setup(Context context)
+			throws IOException, InterruptedException {
+		delimiter = context.getConfiguration().get("delimiter",",");
+		log.info("map 2  delimiter="+delimiter);
+	}
+	
+}
+
+4、Reduce
+package com.wy.hadoop.thirteen;
+
+import java.io.IOException;
+
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.Mapper.Context;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * output : phone:user:description
+ * 
+ * @author Administrator
+ *
+ */
+public class MultipleReducer extends Reducer<Text, FlagStringDataType, Text, NullWritable> {
+	private Logger log = LoggerFactory.getLogger(MultipleReducer.class);
+	private String delimiter = null;
+	@Override
+	protected void reduce(Text key, Iterable<FlagStringDataType> values,Context context)
+			throws IOException, InterruptedException {
+		String[] result = new String[3];
+		result[2]=key.toString();
+		for(FlagStringDataType type:values){
+			int index = type.getFlag();
+			result[index]=type.getValue();
+		}
+		log.info(result[2]+delimiter+result[0]+delimiter+result[1]);
+		context.write(new Text(result[2]+delimiter+result[0]+delimiter+result[1]), NullWritable.get());
+	}
+	@Override
+	protected void setup(Context context)
+			throws IOException, InterruptedException {
+		delimiter = context.getConfiguration().get("delimiter",",");
+		log.info("reduce 1  delimiter="+delimiter);
+	}
+	
+
+}
+
+5、JobMain
+package com.wy.hadoop.thirteen;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.MultipleInputs;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+
+
+public class MultipleDriver extends Configuration implements Tool {
+
+	private String input1 = null;
+	private String input2 = null;
+	private String output = null;
+	private String delimiter = null;
+	
+	@Override
+	public Configuration getConf() {
+		
+		return new Configuration();
+	}
+
+	@Override
+	public void setConf(Configuration arg0) {
+		
+	}
+
+	public static void main(String[] args)throws Exception{
+		Configuration conf = new Configuration();
+		ToolRunner.run(conf, new MultipleDriver(), args);
+	}
+	//sudo -u hdfs hadoop jar rn.jar com.wy.hadoop.thirteen.MultipleDriver -i1 /user/data/thirteen/phone/ -i2 /user/data/thirteen/user/ -o /user/data/thirteen/output -delimiter ,
+	@Override
+	public int run(String[] arg0) throws Exception {
+		setArg(arg0);
+		checkParam();
+		
+		Configuration configuration = new Configuration();
+		configuration.set("delimiter", delimiter);
+		Job job = new Job(configuration,"mutliple input handler");
+		job.setJarByClass(MultipleDriver.class);
+		
+		job.setReducerClass(MultipleReducer.class);
+		job.setMapOutputKeyClass(Text.class);
+		job.setMapOutputValueClass(FlagStringDataType.class);
+		
+		job.setOutputKeyClass(Text.class);
+		job.setOutputValueClass(NullWritable.class);
+		
+		job.setNumReduceTasks(1);//reduce 个数
+		
+		MultipleInputs.addInputPath(job, new Path(input1), TextInputFormat.class, MultipleMapper1.class);
+		MultipleInputs.addInputPath(job, new Path(input2), TextInputFormat.class, MultipleMapper2.class);
+		FileOutputFormat.setOutputPath(job, new Path(output));
+		
+		
+		return job.waitForCompletion(true)?0:1;
+	}
+
+	private void checkParam(){
+		if(input1==null || "".equals(input1.trim())){
+			System.out.println("no phone input....");
+			userManual();
+			System.exit(-1);
+		}
+		if(input2==null || "".equals(input2.trim())){
+			System.out.println("no user input....");
+			userManual();
+			System.exit(-1);
+		}
+		if(output==null || "".equals(output.trim())){
+			System.out.println("no output path....");
+			userManual();
+			System.exit(-1);
+		}
+		if(delimiter==null || "".equals(delimiter.trim())){
+			System.out.println("no set delimiter....");
+			userManual();
+			System.exit(-1);
+		}
+	}
+	private void setArg(String[] args){
+		for(int i=0;i<args.length;i++){
+			if("-i1".equals(args[i])){
+				input1 = args[++i];
+			}
+			if("-i2".equals(args[i])){
+				input2 = args[++i];
+			}
+			if("-o".equals(args[i])){
+				output = args[++i];
+			}
+			if("-delimiter".equals(args[i])){
+				delimiter = args[++i];
+			}
+		}
+	}
+	
+	private void userManual(){
+		System.err.println("Usage:");
+		System.err.println("-i1 input \t phone data path.");
+		System.err.println("-i2 input \t user data path.");
+		System.err.println("-o output \t output data path.");
+		System.err.println("-delimiter data delimiter \t default comma.");
+	}
+}
+
+
+6、运行
+	a、程序打包上传
+
+	b、准备数据文件
+
+	c、数据文件转移到指定的hdfs目录下面
+	[root@x00 ~]# sudo -u hdfs hadoop fs -mkdir /user/data/thirteen/phone
+	[root@x00 ~]# sudo -u hdfs hadoop fs -mkdir /user/data/thirteen/user
+	[root@x00 ~]# sudo -u hdfs hadoop fs -put /opt/test/hd/thirteen_phone.txt /user/data/thirteen/phone/
+	[root@x00 ~]# sudo -u hdfs hadoop fs -put /opt/test/hd/thirteen_user.txt /user/data/thirteen/user/
+
+	d、执行命令
+	sudo -u hdfs hadoop jar rn.jar com.wy.hadoop.thirteen.MultipleDriver -i1 /user/data/thirteen/phone/ -i2 /user/data/thirteen/user/ -o /user/data/thirteen/output -delimiter ,
+	
+	e、查看结果
+	sudo -u hdfs hadoop fs -cat /user/data/thirteen/output/part*

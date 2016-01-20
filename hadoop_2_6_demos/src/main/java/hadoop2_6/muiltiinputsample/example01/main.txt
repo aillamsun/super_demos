@@ -1,0 +1,31 @@
+hadoop 新建:
+hadoop fs -mkdir -p /tmp/muiltiinputsample/example01/mobile /tmp/muiltiinputsample/example01/america /tmp/muiltiinputsample/example01/books
+
+hadoop fs -mkdir -p /tmp/muiltiinputsample/example01/out1
+
+hadoop fs -rm -r /tmp/muiltiinputsample/example01/out1
+
+
+分别将数据对应放入这三个目录
+
+
+hadoop fs -put mobile /tmp/muiltiinputsample/example01/mobile
+hadoop fs -put america /tmp/muiltiinputsample/example01/america
+hadoop fs -put books /tmp/muiltiinputsample/example01/books
+
+
+hadoop jar muiltiinputsample.jar hadoop2_6.muiltiinputsample.example01.Main /tmp/muiltiinputsample/example01/america /tmp/muiltiinputsample/example01/books /tmp/muiltiinputsample/example01/mobile /tmp/muiltiinputsample/example01/out1
+
+
+hadoop fs -get /tmp/muiltiinputsample/example01/out1/*
+
+hadoop fs -cat /tmp/muiltiinputsample/example01/out1/part-r-*
+
+
+结果：
+12345678	0
+23452345	487
+34252454	350
+43545666	885
+56785678	325
+67856783	234

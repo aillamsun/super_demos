@@ -1,0 +1,103 @@
+
+
+hadoop fs -mkdir -p /tmp/hive_twitter/datehour=01
+hadoop fs -put twitter.json  /tmp/hive_twitter/datehour=01
+
+
+1,打成jar 然后 hive add
+
+hive>ADD JAR /usr/hadoop_2_6_demos-0.0.1-SNAPSHOT.jar;
+
+
+2,创建外部表
+
+CREATE EXTERNAL TABLE tweets (
+  id BIGINT,
+  created_at STRING,
+  source STRING,
+  favorited BOOLEAN,
+  retweeted_status STRUCT<
+    text:STRING,
+    user:STRUCT<
+        screen_name:STRING,
+        name:STRING
+     >,
+    retweet_count:INT>,
+
+  entities STRUCT<
+    urls:ARRAY<STRUCT<expanded_url:STRING>>,
+    user_mentions:ARRAY<STRUCT<screen_name:STRING,name:STRING>>,
+    hashtags:ARRAY<STRUCT<text:STRING>>>,
+  text STRING,
+  user STRUCT<
+    screen_name:STRING,
+    name:STRING,
+    friends_count:INT,
+    followers_count:INT,
+    statuses_count:INT,
+    verified:BOOLEAN,
+    utc_offset:INT,
+    time_zone:STRING>,
+  in_reply_to_screen_name STRING
+)
+PARTITIONED BY (datehour INT)
+
+ROW FORMAT SERDE 'hadoop2_6.hive.JSONSerDe'
+
+LOCATION '/tmp/hive_twitter/';
+
+
+
+
+DELIMITED COLLECTION ITEMS TERMINATED BY '\n'
+
+load data local inpath '/opt/20151116/par.log' into table partition_table partition(dt='2015-11-16',dep='dev_0');
+
+
+ALTER TABLE tweets add partition (datehour=01) location '/tmp/hive_twitter/datehour=01';
+
+
+
+select * from tweets;
+
+
+
+
+SELECT created_at, entities, text, user
+FROM tweets
+WHERE user.screen_name='ParvezJugon'
+  AND retweeted_status.user.screen_name='ScottOstby';
+
+
+
+1，
+
+SELECT entities.user_mentions[0].screen_name FROM tweets;
+
+
+2，
+
+SELECT
+ user.time_zone,
+ SUBSTR(created_at, 0, 3),
+ COUNT(*) AS total_count
+FROM tweets
+WHERE user.time_zone IS NOT NULL
+GROUP BY
+ user.time_zone,
+ SUBSTR(created_at, 0, 3)
+ORDER BY total_count DESC
+LIMIT 15;
+
+
+3，
+
+SELECT
+ LOWER(hashtags.text),
+ COUNT(*) AS total_count
+FROM tweets
+LATERAL VIEW EXPLODE(entities.hashtags) t1 AS hashtags
+GROUP BY LOWER(hashtags.text)
+ORDER BY total_count DESC
+LIMIT 15;
+

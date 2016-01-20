@@ -1,0 +1,17 @@
+
+hadoop fs -mkdir -p /tmp/controlledJobsample/example03
+
+
+
+hadoop fs -put movies.dat /tmp/controlledJobsample/example03
+
+
+hadoop jar controlledJobsample.jar hadoop2_6.controlledJobsample.example03.Main /tmp/controlledJobsample/example03 /tmp/controlledJobsample/example03/out Action,Animation
+
+
+
+hadoop fs -get /tmp/controlledJobsample/example03/out
+hadoop fs -cat /tmp/controlledJobsample/example03/out/part-*
+
+
+

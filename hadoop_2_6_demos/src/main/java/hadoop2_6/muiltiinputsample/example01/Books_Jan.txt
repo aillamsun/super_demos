@@ -1,0 +1,9 @@
+01/04/15	43545666	200		Microsoft Visual Basic Step By Step
+01/08/15	34252454	150		Hadoop Definitive Guide
+01/14/15	34252454	200		Master Puppet
+01/15/15	56785678	325		Ubuntu for System Administrator
+01/16/15	43545666	451		Java, How to Program 7e
+01/17/15	23452345	487		C in a Nutshell
+
+格式:
+Date		SSN             Amount($)	BookName
