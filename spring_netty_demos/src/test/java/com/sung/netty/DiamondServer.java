@@ -22,12 +22,11 @@ public class DiamondServer {
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
-            ServerBootstrap b = new ServerBootstrap();
-            b.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class)
-             .handler(new LoggingHandler(LogLevel.INFO))
-             .childHandler(new DiamondServerInitializer());
+            ServerBootstrap server = new ServerBootstrap();
+            server.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class)
+            .handler(new LoggingHandler(LogLevel.INFO)).childHandler(new DiamondServerInitializer());
 
-            b.bind(port).sync().channel().closeFuture().sync();
+            server.bind(port).sync().channel().closeFuture().sync();
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();

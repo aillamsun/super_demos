@@ -28,17 +28,33 @@ public class Netty4ClientHandler extends SimpleChannelInboundHandler<String> {
     	queue = new LinkedBlockingQueue<String>();
 	}
 
+	/**
+	 * 接收Server 响应数据
+	 * @param ctx
+	 * @param message
+	 * @throws Exception
+	 */
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, String message) throws Exception {
     	queue.add(message);
     }
 
-    @Override
+//	@Override
+//	public void channelActive(ChannelHandlerContext ctx) throws Exception {
+//		while (true){
+//			ctx.write("Send Msg to Server...\r\n");
+//			ctx.flush();
+//			TimeUnit.SECONDS.sleep(2);
+//		}
+//	}
+
+	@Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         logger.info("Unexpected exception from downstream.", cause);
         ctx.close();
     }
-    
+
+
     public String getMessage() {
 		String message = null;
 		try {
