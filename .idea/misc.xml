@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="EntryPointsManager">
+    <entry_points version="2.0" />
+  </component>
+  <component name="FrameworkDetectionExcludesConfiguration">
+    <file type="web" url="file://$PROJECT_DIR$/spring_boot_mybatis3" />
+    <file type="web" url="file://$PROJECT_DIR$/spring_elasticsearch_demos" />
+    <file type="web" url="file://$PROJECT_DIR$/spring_mongodb_demos" />
+    <file type="web" url="file://$PROJECT_DIR$/spring_mvc_mybatis3" />
+    <file type="web" url="file://$PROJECT_DIR$/spring_zookeeper_web_demos" />
+  </component>
+  <component name="IdProvider" IDEtalkID="215BF2BC1905CEFA3886CD0DDB91526F" />
+  <component name="MavenProjectsManager">
+    <option name="originalFiles">
+      <list>
+        <option value="$PROJECT_DIR$/pom.xml" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_1_6" assert-keyword="true" jdk-15="true" project-jdk-name="1.7" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/out" />
+  </component>
+</project>

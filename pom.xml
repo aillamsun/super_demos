@@ -391,5 +391,6 @@
     <module>thread_concurrent_demos</module>
     <module>design_patterns_demos</module>
     <module>java_algorithm_sort</module>
+    <module>spring_netty_demos</module>
   </modules>
 </project>

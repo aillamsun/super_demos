@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="war" name="spring_elasticsearch_demos:war">
+    <output-path>$PROJECT_DIR$/spring_elasticsearch_demos/target</output-path>
+    <root id="archive" name="spring_elasticsearch_demos.war">
+      <element id="artifact" artifact-name="spring_elasticsearch_demos:war exploded" />
+    </root>
+  </artifact>
+</component>
