@@ -8,20 +8,19 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>spring_netty_demos</artifactId>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
     <name>spring_netty_demos</name>
     <url>http://maven.apache.org</url>
+    <modules>
+        <module>../netty4_demos</module>
+        <module>../netty5_demos</module>
+    </modules>
 
     <properties>
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-all</artifactId>
-            <version>4.0.7.Final</version>
-        </dependency>
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>dubbo</artifactId>

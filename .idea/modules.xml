@@ -7,6 +7,8 @@
       <module fileurl="file://$PROJECT_DIR$/design_patterns_demos/design_patterns_demos.iml" filepath="$PROJECT_DIR$/design_patterns_demos/design_patterns_demos.iml" />
       <module fileurl="file://$PROJECT_DIR$/hadoop_2_6_demos/hadoop_2_6_demos.iml" filepath="$PROJECT_DIR$/hadoop_2_6_demos/hadoop_2_6_demos.iml" />
       <module fileurl="file://$PROJECT_DIR$/java_algorithm_sort/java_algorithm_sort.iml" filepath="$PROJECT_DIR$/java_algorithm_sort/java_algorithm_sort.iml" />
+      <module fileurl="file://$PROJECT_DIR$/netty4_demos/netty4_demos.iml" filepath="$PROJECT_DIR$/netty4_demos/netty4_demos.iml" />
+      <module fileurl="file://$PROJECT_DIR$/netty5_demos/netty5_demos.iml" filepath="$PROJECT_DIR$/netty5_demos/netty5_demos.iml" />
       <module fileurl="file://$PROJECT_DIR$/spark_1_3_demos/spark_1_3_demos.iml" filepath="$PROJECT_DIR$/spark_1_3_demos/spark_1_3_demos.iml" />
       <module fileurl="file://$PROJECT_DIR$/spring_boot_mybatis3/spring_boot_mybatis3.iml" filepath="$PROJECT_DIR$/spring_boot_mybatis3/spring_boot_mybatis3.iml" />
       <module fileurl="file://$PROJECT_DIR$/spring_cache_redis/spring_cache_redis.iml" filepath="$PROJECT_DIR$/spring_cache_redis/spring_cache_redis.iml" />

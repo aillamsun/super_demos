@@ -26,6 +26,8 @@
         <module name="design_patterns_demos" />
         <module name="hadoop_2_6_demos" />
         <module name="java_algorithm_sort" />
+        <module name="netty4_demos" />
+        <module name="netty5_demos" />
         <module name="spark_1_3_demos" />
         <module name="spring_boot_mybatis3" />
         <module name="spring_cache_redis" />
@@ -33,7 +35,6 @@
         <module name="spring_kafka_demos" />
         <module name="spring_mongodb_demos" />
         <module name="spring_mvc_mybatis3" />
-        <module name="spring_netty_demos" />
         <module name="spring_rabbitmq_demos" />
         <module name="spring_zookeeper_demos" />
         <module name="spring_zookeeper_web_demos" />
@@ -46,6 +47,8 @@
       <module name="design_patterns_demos" target="1.7" />
       <module name="hadoop_2_6_demos" target="1.7" />
       <module name="java_algorithm_sort" target="1.7" />
+      <module name="netty4_demos" target="1.7" />
+      <module name="netty5_demos" target="1.7" />
       <module name="spark_1_3_demos" target="1.7" />
       <module name="spring_boot_mybatis3" target="1.7" />
       <module name="spring_cache_redis" target="1.7" />
