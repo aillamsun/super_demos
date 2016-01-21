@@ -10,12 +10,12 @@
   </parent>
 
   <groupId>com.sung</groupId>
-  <artifactId>base_</artifactId>
+  <artifactId>super_demos</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
 
 
-  <name>base_</name>
+  <name>super_demos</name>
   <url>http://maven.apache.org</url>
 
   <properties>
