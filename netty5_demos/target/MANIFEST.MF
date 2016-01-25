@@ -1,0 +1,8 @@
+Manifest-Version: 1.0
+Implementation-Version: 0.0.1-SNAPSHOT
+Built-By: sungang
+Implementation-Vendor-Id: com.sung
+Created-By: IntelliJ IDEA
+Build-Jdk: 1.7.0_67
+Main-Class: ${start-class}
+

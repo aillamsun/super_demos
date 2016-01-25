@@ -1,6 +1,9 @@
 package com.sung.sort.quick;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by sungang on 2016/1/15.9:48
@@ -12,9 +15,8 @@ public class A {
 
     public static void main(String[] args) {
         int[] v = {1, 4, 6, 9, 11, 13, 15};
-        int[] v2 = {15,13,11,9,6,4,1};
+        int[] v2 = {15, 13, 11, 9, 6, 4, 1};
         //int [] v =  {1,2,3,4,5,6,7};
-
 
 
 //        print(v);
@@ -22,16 +24,15 @@ public class A {
 //            System.out.println(ss);
 //        }
 
-       // aa(v);
-        bb(v2);
-       // cc(v2);
+        //bb(v2);
+        cc(v2);
     }
 
     public static void aa(int[] v) {
         int temp = 15;
         for (int c : v) {
             if (c < temp / 2) {
-                if (c != 1){
+                if (c != 1) {
                     ss.add(c + "," + (temp - c));
                 }
 
@@ -63,17 +64,27 @@ public class A {
     }
 
     public static void cc(int[] v) {
-        Map m = new HashMap();
-        Set rt = new HashSet();
-        int temp = 15;
-        for (int c : v) {
-            if (c < temp / 2) {
-                m.put(temp - c, c);
-            } else {
-                rt.add(c+","+m.get(c));
+        Map<Integer, Integer> map = new HashMap<Integer, Integer>();
+        int K = 15;
+        int flag = 0;
+        for (int i : v) {
+            map.put(i, 1);
+        }
+
+        for (int i : v) {
+            if (map.get(K - i) != null && map.get(K - i) == 1) {
+
+                if (flag == 1) {
+                    System.out.print(",");
+                }
+
+                System.out.print(i + "," + (K - i));
+                flag = 1;
+                map.put(K - i, 2);
+                map.put(i, 2);
+
             }
         }
-        System.out.println(rt);
     }
 
 

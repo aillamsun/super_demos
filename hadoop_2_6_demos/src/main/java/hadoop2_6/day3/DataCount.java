@@ -31,11 +31,17 @@ public class DataCount extends Configured implements Tool {
 		Configuration configuration = getConf();
 		Job job = Job.getInstance(configuration, "data_count_20151104 ");
 		job.setJarByClass(DataCount.class);
+
+
 		job.setMapperClass(DCMapper.class);
+		job.setMapOutputKeyClass(Text.class);
+		job.setMapOutputValueClass(DataBean.class);
+
 		job.setReducerClass(DCReduce.class);
-		FileInputFormat.setInputPaths(job, new Path("/datacount.txt"));
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(DataBean.class);
+
+		FileInputFormat.setInputPaths(job, new Path("/datacount.txt"));
 		FileOutputFormat.setOutputPath(job, new Path("/datacount2.out"));
 		job.waitForCompletion(true);
 		return job.isSuccessful() ? 0 : 1;

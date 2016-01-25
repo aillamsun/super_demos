@@ -41,7 +41,7 @@
 	<rabbit:queue name="Test_Spring_mq_async_demo"/>
 	
 	<!-- 同步 -->
-	<bean id="TestSpringMqSyncDemo" class="com.sung.rabbitmq.demo.TestSpringMqSyncDemo">
+	<bean id="TestSpringMqSyncDemo" class="com.sung.rabbitmq.springExample.TestSpringMqSyncDemo">
 		<property name="rabbitTemplate" ref="rabbitTemplate"/>
 	</bean>
 	<rabbit:listener-container connection-factory="connectionFactory" prefetch="1" concurrency="30" acknowledge="manual">
@@ -50,7 +50,7 @@
 	
 	
 	<!-- 异步 -->
-	<bean id="TestSpringMqAsyncDemo" class="com.sung.rabbitmq.demo.TestSpringMqAsyncDemo">
+	<bean id="TestSpringMqAsyncDemo" class="com.sung.rabbitmq.springExample.TestSpringMqAsyncDemo">
 		<property name="rabbitTemplate" ref="rabbitTemplate"/>
 	</bean>
 	<rabbit:listener-container connection-factory="connectionFactory" prefetch="1" concurrency="30" acknowledge="manual">
