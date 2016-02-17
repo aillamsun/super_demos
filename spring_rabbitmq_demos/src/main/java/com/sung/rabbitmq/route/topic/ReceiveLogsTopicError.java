@@ -23,8 +23,7 @@ public class ReceiveLogsTopicError {
 			// test1 :接收所有类型的消息
 			String bindingKey = "anonymous.error";
 			channel.queueBind(queueName, EXCHANGE_NAME, bindingKey);
-			System.out
-					.println(" ReceiveLogsTopicError--->Waiting for messages. To exit press CTRL+C");
+			System.out.println(" ReceiveLogsTopicError--->Waiting for messages. To exit press CTRL+C");
 			QueueingConsumer consumer = new QueueingConsumer(channel);
 			channel.basicConsume(queueName, true, consumer);
 			while (true) {

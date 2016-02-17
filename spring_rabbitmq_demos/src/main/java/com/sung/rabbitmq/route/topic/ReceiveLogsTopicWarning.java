@@ -22,8 +22,7 @@ public class ReceiveLogsTopicWarning {
 			// 指定队列绑定key
 			String bindingKey = "anonymous.warning";
 			channel.queueBind(queueName, EXCHANGE_NAME, bindingKey);
-			System.out
-					.println("ReceiveLogsTopicWarning--->Waiting for messages. To exit press CTRL+C");
+			System.out.println("ReceiveLogsTopicWarning--->Waiting for messages. To exit press CTRL+C");
 			QueueingConsumer consumer = new QueueingConsumer(channel);
 			channel.basicConsume(queueName, true, consumer);
 			while (true) {
