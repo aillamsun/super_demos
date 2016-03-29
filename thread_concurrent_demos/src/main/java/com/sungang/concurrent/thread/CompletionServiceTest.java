@@ -1,8 +1,6 @@
 package com.sungang.concurrent.thread;
 
-import java.util.Random;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
@@ -18,7 +16,7 @@ public class CompletionServiceTest {
 		 */
 		ExecutorService exec = Executors.newFixedThreadPool(11);
 		/**
-		 * 容量为10的阻塞队列
+		 * 容量为1000的阻塞队列
 		 */
 
 		final BlockingQueue<Future<Integer>> queue = new LinkedBlockingDeque<Future<Integer>>(1000);
@@ -29,7 +27,7 @@ public class CompletionServiceTest {
 		
 		
 		/**
-		 * 模拟瞬间产生10个任务，且每个任务执行时间不一致 
+		 * 模拟瞬间产生1000个任务，且每个任务执行时间不一致
 		 */
 		for (int i = 0; i < 1000; i++)  {
 			completionService.submit(new TaskJob());

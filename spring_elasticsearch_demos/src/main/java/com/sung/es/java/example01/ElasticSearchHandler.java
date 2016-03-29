@@ -39,5 +39,7 @@ public class ElasticSearchHandler {
 //        transportClient = transportClient.addTransportAddress(new InetSocketTransportAddress("localhost", 9300));
 //        return (Client) transportClient;
 
+        //client = new TransportClient().addTransportAddress(new InetSocketTransportAddress(ip, 9300));
+
     }
 }

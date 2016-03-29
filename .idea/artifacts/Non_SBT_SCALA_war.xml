@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="war" name="Non-SBT-SCALA:war">
+    <output-path>$PROJECT_DIR$/Non-SBT-SCALA/target</output-path>
+    <root id="archive" name="Non-SBT-SCALA-0.0.1-SNAPSHOT.war">
+      <element id="artifact" artifact-name="Non-SBT-SCALA:war exploded" />
+    </root>
+  </artifact>
+</component>

@@ -26,8 +26,11 @@
         <module name="design_patterns_demos" />
         <module name="hadoop_2_6_demos" />
         <module name="java_algorithm_sort" />
+        <module name="net_protocol_demos" />
         <module name="netty4_demos" />
         <module name="netty5_demos" />
+        <module name="Non-SBT-SCALA" />
+        <module name="scala_study_demos" />
         <module name="spark_1_3_demos" />
         <module name="spring_boot_mybatis3" />
         <module name="spring_cache_redis" />
@@ -47,8 +50,11 @@
       <module name="design_patterns_demos" target="1.7" />
       <module name="hadoop_2_6_demos" target="1.7" />
       <module name="java_algorithm_sort" target="1.7" />
+      <module name="net_protocol_demos" target="1.7" />
       <module name="netty4_demos" target="1.7" />
       <module name="netty5_demos" target="1.7" />
+      <module name="Non-SBT-SCALA" target="1.7" />
+      <module name="scala_study_demos" target="1.6" />
       <module name="spark_1_3_demos" target="1.7" />
       <module name="spring_boot_mybatis3" target="1.7" />
       <module name="spring_cache_redis" target="1.7" />
@@ -60,6 +66,7 @@
       <module name="spring_rabbitmq_demos" target="1.7" />
       <module name="spring_zookeeper_demos" target="1.7" />
       <module name="spring_zookeeper_web_demos" target="1.7" />
+      <module name="super_demos" target="1.7" />
       <module name="thread_concurrent_demos" target="1.7" />
     </bytecodeTargetLevel>
   </component>

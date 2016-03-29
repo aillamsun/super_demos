@@ -17,10 +17,9 @@ import java.util.concurrent.Future;
 public class ExecutorServiceInvokeAllMethodTest {
 	
 	public static void main(String[] args) throws InterruptedException {
-		
+
 		ExecutorService exec = Executors.newFixedThreadPool(10);
 		List<Callable<Integer>> tasks = new ArrayList<Callable<Integer>>();
-		
 		for (int i = 0; i < 1000; i++)  {
 			tasks.add(new TaskJob());  
 		}

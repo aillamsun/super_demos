@@ -19,8 +19,8 @@ object HdfsWoldcount {
     val sparkConf = new SparkConf().setAppName("HdfsWoldcount")
     val ssc = new StreamingContext(sparkConf, Seconds(args(1).toInt))
     val lines = ssc.textFileStream(args(0))
-    var words = lines.flatMap { line => line.split(" ") }
-    var wordcounts = words.map { line => (line,1) }.reduceByKey(_ + _)
+    val words = lines.flatMap { line => line.split(" ") }
+    val wordcounts = words.map { line => (line,1) }.reduceByKey(_ + _)
     wordcounts.print();
     ssc.start();
     ssc.awaitTermination();

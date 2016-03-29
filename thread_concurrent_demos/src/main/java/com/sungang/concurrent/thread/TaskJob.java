@@ -5,9 +5,12 @@ import java.util.concurrent.Callable;
 
 public class TaskJob implements Callable<Integer>{
 	public Integer call() throws Exception {
-		int ran = new Random().nextInt(1000);  
+		int ran = new Random().nextInt(1000);
 		//Thread.sleep(ran);
-		//System.out.println(Thread.currentThread().getName() + " 休息了 " + ran);
+		System.out.println(Thread.currentThread().getName() + " 休息了 " + ran);
+//		for (int i = 1; i <= 10; i++){
+//
+//		}
 		return ran;  
 	}
 }

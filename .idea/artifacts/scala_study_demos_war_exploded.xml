@@ -1,0 +1,16 @@
+<component name="ArtifactManager">
+  <artifact type="exploded-war" name="scala_study_demos:war exploded">
+    <output-path>$PROJECT_DIR$/scala_study_demos/target/scala_study_demos-0.0.1-SNAPSHOT</output-path>
+    <root id="root">
+      <element id="directory" name="WEB-INF">
+        <element id="directory" name="classes">
+          <element id="module-output" name="scala_study_demos" />
+        </element>
+      </element>
+      <element id="directory" name="META-INF">
+        <element id="file-copy" path="D:\ideaWorkspace\wks1\super_demos\scala_study_demos\target/MANIFEST.MF" />
+      </element>
+      <element id="javaee-facet-resources" facet="scala_study_demos/web/Web" />
+    </root>
+  </artifact>
+</component>
