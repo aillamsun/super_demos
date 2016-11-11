@@ -1,13 +1,12 @@
 package com.sungang.concurrent.thread.actual.combat;
 
-import org.apache.http.annotation.NotThreadSafe;
 
 /**
  * Created by sungang on 2016/3/30.11:14
  *
  * 非线程安全  如果需要保证线程安全需要添加同步锁
  */
-@NotThreadSafe
+//@NotThreadSafe
 public class UnsafeSequence {
 
     private int value;

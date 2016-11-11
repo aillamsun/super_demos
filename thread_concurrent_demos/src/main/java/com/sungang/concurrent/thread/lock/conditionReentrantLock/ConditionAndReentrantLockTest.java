@@ -1,4 +1,4 @@
-package com.sungang.concurrent.thread;
+package com.sungang.concurrent.thread.lock.conditionReentrantLock;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;

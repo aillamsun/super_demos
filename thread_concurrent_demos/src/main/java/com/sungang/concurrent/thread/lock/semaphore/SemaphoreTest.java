@@ -1,4 +1,4 @@
-package com.sungang.concurrent.thread;
+package com.sungang.concurrent.thread.lock.semaphore;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
